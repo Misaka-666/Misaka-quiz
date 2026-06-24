@@ -1408,9 +1408,10 @@ const ZIP_MAX_ENTRY_COMPRESSED_V33=40*1024*1024;
 const ZIP_MAX_ENTRY_UNCOMPRESSED_V33=80*1024*1024;
 const ZIP_MAX_TOTAL_UNCOMPRESSED_V33=160*1024*1024;
 function isSafeZipEntryNameV33(name){
-  name=String(name||'').trim();
+  name=String(name||'').replace(/\\/g,'/').trim();
   if(!name||name.includes('\0')||name.startsWith('/')||name.startsWith('./')||/^[A-Za-z]:/.test(name))return false;
-  return name.split('/').every(part=>part&&part!=='.'&&part!=='..');
+  const parts=name.split('/').filter(p=>p!==''); // 允许末尾斜杠（目录条目）
+  return parts.length===0||parts.every(part=>part!=='.'&&part!=='..');
 }
 function assertZipEntrySafeV33(e,bufLength){
   if(!e||!isSafeZipEntryNameV33(e.name))throw new Error(`ZIP 条目路径不安全：${esc(String(e&&e.name||'').slice(0,80)||'(空)')}`);
