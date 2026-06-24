@@ -2246,7 +2246,7 @@ function visibleOptionTextForRisk(s){
   return visibleQuestionTextForRisk(s)
     .replace(/data:image\/(?:png|jpeg|jpg|gif|webp|bmp|svg\+xml);base64,[A-Za-z0-9+/=\r\n]+/g,'[图片]')
     .replace(/!\[[^\]]{0,80}\]\([^)]{0,120}\)/g,'[图片]')
-    .replace(/\[?【MISAKA_IMAGE:[^】]+】\]?/g,'[图片]');
+    .replace(/\[?【(?:SHIROHA|MISAKA)_IMAGE:[^】]+】\]?/g,'[图片]');
 }
 function isCivilServiceLongStemAllowed(q,profile={}){
   const question=visibleQuestionTextForRisk(q?.question||'');
@@ -6672,7 +6672,7 @@ function normalizeBackupPayloadV23(data,fileName){
   let banks=[];let wrongBook={};let favorites={};let records=[];let settings={};let activeBankId='';let hasWebSettings=false;let crossPlatformMeta={favoriteQuestions:{}};
   const webState=data.webState&&typeof data.webState==='object'?data.webState:null;
   const cross=data.crossPlatform&&typeof data.crossPlatform==='object'?data.crossPlatform:null;
-  const nativeLike=String(data.kind||'').startsWith('shiroha_quiz')||!!cross;
+  const nativeLike=String(data.kind||'').startsWith('shiroha_quiz')||String(data.kind||'').startsWith('misaka_quiz')||!!cross;
   if(Array.isArray(data.banks)){
     banks=data.banks;
     const legacyWrong=(webState&&webState.wrongBook)||(!Array.isArray(data.wrongBook)&&data.wrongBook)||null;
