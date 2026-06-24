@@ -1,5 +1,59 @@
 (function(){
-const APP_VERSION='V35：分组练习与学习体验优化版';
+const APP_VERSION='V35：分组练习与学习体验优化版 + AI解析/分析';
+/* SHIROHA_WEB_AI_PATCH_START — AI Prompts */
+const AI_REVIEW_SYSTEM_PROMPT=`
+你是 Shiroha Quiz 的题库核对助手。你的任务是检查题目识别结果是否存在异常，而不是重新出题。
+
+请根据输入的题干、题型、选项、答案、解析，判断是否存在以下问题：
+1. 题型识别错误
+2. 选项缺失、选项合并、选项拆分错误
+3. 答案与选项不匹配
+4. 多选题答案数量异常
+5. 判断题被误识别为单选题，或单选题被误识别为判断题
+6. 解析与答案明显冲突
+7. 题干疑似不完整
+8. 原始文本中存在明显解析残缺或格式污染
+9. 题干中残留答案标记，如题干末尾带 (AB)、答案：A、正确答案等
+
+要求：
+- 不要凭空添加题目内容，不要重新解题
+- 不确定时标记为"需要人工确认"
+- 输出必须是纯 JSON，不要 Markdown 代码块，不要额外解释
+- 每道题都要返回核对结果
+- JSON 顶层必须是 {"items":[...]}
+- 每项必须包含 questionId、status、issueTypes、reason、suggestion、riskLevel
+`
+
+const AI_ANALYSIS_SYSTEM_PROMPT=`
+你是 Shiroha Quiz 的题目解析助手。你的任务是根据题干、题型、选项和正确答案，生成简洁、准确、适合学习复习的解析或主观题参考作答。
+
+要求：
+1. 客观题只围绕题干、选项和正确答案解释，不要擅自改变答案
+2. 简答题、问答题、面试题没有标准选项时，应生成"参考作答 / 答题思路 / 答题要点"
+3. 不要重新改写题目
+4. 解析或参考作答应简洁清楚，适合刷题时快速理解
+5. 如果题目信息不足以生成可靠内容，请标记为需要人工确认
+6. 输出必须是纯 JSON，不要 Markdown 代码块，不要额外解释
+7. 必须原样返回输入里的 questionId
+8. JSON 顶层必须是 {"items":[...]}
+9. 每项必须包含 questionId、analysis、needHumanReview
+`
+
+const AI_SINGLE_QUESTION_ANALYSIS_SYSTEM_PROMPT=`
+你是 Shiroha Quiz 的单题学习分析助手。你的任务是在刷题者已经提交答案或处于背题模式后，对当前题目给出参考分析。
+
+要求：
+1. 先根据题干、题型和选项独立判断参考答案，再与本地题库答案对照
+2. 如果本地题库答案可能有误，要明确标记 needsReview 为 true
+3. 客观题 suggestedAnswer 返回选项字母，例如 A 或 AB；判断题返回 正确 或 错误
+4. analysis 应解释推理过程、排除依据或作答思路，适合刷题复盘，不要冗长
+5. 简答题只给参考要点，不要强行给唯一标准答案
+6. 如果题目信息不足，confidence 返回 LOW，needsReview 返回 true
+7. 输出必须是纯 JSON，不要 Markdown 代码块，不要额外解释
+8. 必须原样返回输入里的 questionId
+9. JSON 顶层必须是 {"questionId":"...","suggestedAnswer":"...","matchesLocalAnswer":true,"analysis":"...","confidence":"HIGH / MEDIUM / LOW","needsReview":false,"warning":""}
+`
+/* SHIROHA_WEB_AI_PATCH_END */
 const RICH_CONTENT_VERSION_V57='shiroha-web-rich-v1';
 const BANK_DEFAULT_GROUP_V58='未分组';
 const CURRENT_SCHEMA_VERSION=1;
@@ -9,7 +63,85 @@ const CLEAR_STORAGE_KEYS=['shiroha_quiz_state','uquiz_state_v8_c1'];
 const TYPE_LABEL={single:'单选题',multiple:'多选题',multi:'多选题',judge:'判断题',blank:'填空题',short:'简答题',short_answer:'简答题'};
 const state=loadState();
 let importCache=[];let tableImportResultV49=null;let importWarnings=[];let importReport='';let importDiagnostics=null;let importPreviewFilter='priority';let importSelected=new Set();let bankEditSessionV45=null;let exportBankSelectedV23=new Set();let backupImportModeV23='merge';let practice={items:[],idx:0,answered:0,correct:0,wrong:0,start:0};let exam={items:[],answers:{},start:0,timer:null,deadline:0,submitted:false};let editBlankGroupsV58914=[];let editMultiBlankEnabledV58914=false;
+/* SHIROHA_WEB_AI_CLIENT_START */
+function getAiConfig(){
+  const cfg=state.settings&&state.settings.aiConfig||{};
+  return {apiBaseUrl:cfg.apiBaseUrl||'',apiKey:cfg.apiKey||'',modelName:cfg.modelName||'deepseek-chat'};
+}
+function isAiConfigured(){const cfg=getAiConfig();return !!(cfg.apiBaseUrl && cfg.apiKey && cfg.modelName);}
+
+async function aiRequestChatCompletion(systemPrompt, userContent, timeoutSeconds=60){
+  const cfg=getAiConfig();
+  if(!cfg.apiBaseUrl||!cfg.apiKey||!cfg.modelName)throw new Error('请先在设置中配置 AI 接口。');
+  const endpoint=cfg.apiBaseUrl.trim().endsWith('/chat/completions')?cfg.apiBaseUrl.trim():cfg.apiBaseUrl.trim().replace(/\/$/,'')+'/chat/completions';
+  const body={model:cfg.modelName.trim(),temperature:0.1,messages:[{role:'system',content:systemPrompt.trim()},{role:'user',content:String(userContent)}]};
+  const controller=new AbortController();const id=setTimeout(()=>controller.abort(),(timeoutSeconds||60)*1000);
+  try{
+    const resp=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.apiKey.trim()},body:JSON.stringify(body),signal:controller.signal});
+    if(!resp.ok){
+      const errText=await resp.text().catch(()=>'');let hint='';
+      if(resp.status===401||resp.status===403)hint='API Key 无效或无权限';
+      else if(resp.status===404)hint='API 地址不正确';
+      else if(resp.status===429)hint='请求过于频繁或额度受限';
+      else if(resp.status>=500)hint='服务商接口暂时异常';
+      else hint='请求格式异常';
+      throw new Error(`AI 接口请求失败：HTTP ${resp.status}，${hint}${errText?'：'+errText.slice(0,200):''}`);
+    }
+    const data=await resp.json();
+    const content=(data.choices||[])[0]?.message?.content||'';
+    if(!content.trim())throw new Error('AI 接口返回内容为空。');
+    return content;
+  }finally{clearTimeout(id)}
+}
+
+function extractJsonFromAI(raw){
+  let s=(raw||'').trim();
+  const f=s.indexOf('{');const l=s.lastIndexOf('}');
+  if(f>=0&&l>f)s=s.slice(f,l+1);
+  try{return JSON.parse(s)}catch(e){
+    s=s.replace(/```[\s\S]*?```/g,'').trim();
+    const f2=s.indexOf('{'),l2=s.lastIndexOf('}');
+    if(f2>=0&&l2>f2)s=s.slice(f2,l2+1);
+    return JSON.parse(s);
+  }
+}
+
+function questionToAiPayload(q,idx){
+  return {index:idx,questionId:q.id||('q'+idx),number:q.number||(idx+1),type:TYPE_LABEL[q.type]||q.type||'single',question:q.question||'',options:(q.options||[]).map(o=>({key:o.key,text:o.text})),answer:Array.isArray(q.answer)?q.answer:[],blankAnswers:Array.isArray(q.blankAnswers)?q.blankAnswers:[],analysis:q.analysis||'',category:q.category||''};
+}
+
+async function aiGenerateAnalysisForQuestions(questions,onProgress){
+  if(!isAiConfigured()){toast('请先在设置中配置 AI 接口。','warn');return [];}
+  const payloadQs=(questions||[]).map((q,i)=>questionToAiPayload(q,i));
+  if(!payloadQs.length)return [];
+  const userPayload=JSON.stringify({task:'generate_analysis',questions:payloadQs,outputFormat:{type:'object',properties:{items:{type:'array',items:{type:'object',properties:{questionId:{type:'string'},analysis:{type:'string'},needHumanReview:{type:'boolean'}}}}}}});
+  const raw=await aiRequestChatCompletion(AI_ANALYSIS_SYSTEM_PROMPT,userPayload);
+  const parsed=extractJsonFromAI(raw);
+  const items=Array.isArray((parsed||{}).items)?parsed.items:[parsed].filter(x=>x&&typeof x.questionId==='string');
+  if(onProgress)onProgress('done');
+  return items;
+}
+
+async function aiAnalyzeSingleQuestion(question,userAnswer){
+  if(!isAiConfigured()){toast('请先在设置中配置 AI 接口。','warn');return null;}
+  const payload={task:'single_question_analysis',question:questionToAiPayload(question,0),userAnswer:Array.isArray(userAnswer)?userAnswer:[],note:'AI 结果只用于练习复盘参考，不会自动修改题库答案或解析。'};
+  const raw=await aiRequestChatCompletion(AI_SINGLE_QUESTION_ANALYSIS_SYSTEM_PROMPT,JSON.stringify(payload),30);
+  const parsed=extractJsonFromAI(raw);
+  if(!parsed||typeof parsed.questionId!=='string')throw new Error('AI 返回格式异常');
+  return {questionId:parsed.questionId,suggestedAnswer:parsed.suggestedAnswer||'',matchesLocalAnswer:parsed.matchesLocalAnswer,analysis:parsed.analysis||'',confidence:parsed.confidence||'MEDIUM',needsReview:!!parsed.needsReview,warning:parsed.warning||''};
+}
+
+async function aiTestConnection(){
+  const cfg=getAiConfig();
+  if(!cfg.apiBaseUrl||!cfg.apiKey||!cfg.modelName)throw new Error('请先填写完整的 AI 配置。');
+  const userPayload=JSON.stringify({task:'connection_test'});
+  const raw=await aiRequestChatCompletion('你是 Shiroha Quiz 的接口连通性测试助手，只返回简短确认。',userPayload,30);
+  return raw?('连接成功：'+raw.slice(0,40)):'连接成功。';
+}
+/* SHIROHA_WEB_AI_CLIENT_END */
 const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];
+function shouldKeepImportAnalysis(){const el=$('#import-keep-analysis');return el?el.checked:true;}
+function stripImportAnalysis(qs){if(!qs)return qs;qs.forEach(q=>{q.analysis=''});return qs;}
 function ensureDefaultBank(){if(!state.banks.length&&!state.settings?.suppressDefaultBank) state.banks.push(defaultBank()); if(!state.activeBankId) state.activeBankId=state.banks[0]?.id||'';}
 function blankState(){return {schemaVersion:CURRENT_SCHEMA_VERSION,banks:[],activeBankId:'',wrongBook:{},favorites:{},records:[],settings:{},crossPlatformMeta:{favoriteQuestions:{}}}}
 function warnDev(message,error){try{console.warn('[Shiroha Quiz]',message,error||'')}catch(_){}}
@@ -909,6 +1041,7 @@ async function readTableImportFileV49(file){
 function applyTableImportResultV49(result,fileName){
   tableImportResultV49=result;
   importCache=(result.questions||[]).map((q,i)=>normalizeQuestion(q,i)).filter(q=>q.question);
+  if(!shouldKeepImportAnalysis())stripImportAnalysis(importCache);
   importWarnings=[];
   importReport=result.report||`解析策略：Excel/CSV 表格题库解析。`;
   importDiagnostics={mode:'Excel/CSV 表格题库解析',strategy:'表格题库解析',profile:{tableImport:true},candidates:[{name:'表格题库解析',questions:importCache.length,score:importCache.length*12,warnings:collectImportWarnings(importCache)}],expected:{total:importCache.length,types:{}},stats:countTypes(importCache),warnings:result.warnings||[]};
@@ -1769,7 +1902,9 @@ function parseImport(){
     if($('#import-mode').value==='json'||text.startsWith('[')||text.startsWith('{')){
       const data=JSON.parse(text);const arr=Array.isArray(data)?data:(data.questions||[]);
       importCache=arr.map(normalizeQuestion).filter(q=>q.question);importReport='解析策略：JSON结构化导入。';importDiagnostics={mode:'JSON结构化导入',strategy:'JSON结构化导入',profile:{},candidates:[{name:'JSON结构化导入',questions:importCache.length,score:importCache.length*10,warnings:collectImportWarnings(importCache)}],expected:{total:0,types:{}},stats:countTypes(importCache)};
+      if(!shouldKeepImportAnalysis())stripImportAnalysis(importCache);
     }else importCache=parseTextQuestions(text,strategy);
+    if(!shouldKeepImportAnalysis())stripImportAnalysis(importCache);
     importSelected.clear();
     renderImportPreview(importCache);
     $('#confirm-import-btn').disabled=!importCache.length;
@@ -1822,6 +1957,7 @@ function parseDualImport(){
     const answerEntries=resolved.answerEntries||[];
     const result=resolved.result||mergeQuestionAnswers(questions,answerEntries,mode);
     importCache=result.questions;
+    if(!shouldKeepImportAnalysis())stripImportAnalysis(importCache);
     importWarnings=result.warnings;
     importReport='解析策略：双文件导入；题目文件和答案文件分别识别后按自动/所选规则合并。'
       +(result.strategyName?' 实际采用：'+result.strategyName+'。':'')
@@ -5296,7 +5432,8 @@ function renderImportPreview(arr){
   const filterLabel={priority:'异常优先',problem:'仅异常',normal:'仅正常',all:'全部'}[importPreviewFilter]||'异常优先';
   const report=importReport?`<div class="import-report">${esc(importReport)}</div>`:'';
   renderImportReportPanel(arr, rows, warnings);
-  $('#import-summary').innerHTML=arr.length?`${report}<b>识别到 ${arr.length} 道题，当前显示 ${shown.length} 道（${filterLabel}），已选择 ${importSelected.size} 道。</b>${warnings.length?'<br>警告 '+warnings.length+' 条：<br>'+warnings.slice(0,12).map(esc).join('<br>')+(warnings.length>12?'<br>……':''):'<br>未发现明显异常。'}`:'尚未识别到题目。';
+  const aiBtnHtml=arr.length?` <button class="ghost" id="ai-gen-analysis-btn" type="button" style="margin-top:8px">AI 生成解析（${isAiConfigured()?'已配置':'需先配置'}）</button>`:'';
+  $('#import-summary').innerHTML=arr.length?`${report}<b>识别到 ${arr.length} 道题，当前显示 ${shown.length} 道（${filterLabel}），已选择 ${importSelected.size} 道。</b>${aiBtnHtml}${warnings.length?'<br>警告 '+warnings.length+' 条：<br>'+warnings.slice(0,12).map(esc).join('<br>')+(warnings.length>12?'<br>……':''):'<br>未发现明显异常。'}`:'尚未识别到题目。';
   $('#import-summary').className='notice '+(warnings.length?'warn':'ok');
   const pf=$('#import-preview-filter');if(pf&&pf.value!==importPreviewFilter)pf.value=importPreviewFilter;
   $('#confirm-import-btn').disabled=!arr.length;const dualConfirm=$('#dual-confirm-import-btn');if(dualConfirm)dualConfirm.disabled=!arr.length;updateBankEditUiV45(arr.length);syncImportAppendUiV59();
@@ -5307,6 +5444,60 @@ function renderImportPreview(arr){
   $$('[data-select-import]').forEach(cb=>cb.onchange=()=>{const i=Number(cb.dataset.selectImport);if(cb.checked)importSelected.add(i);else importSelected.delete(i);renderImportPreview(importCache)});
   $$('[data-edit-import]').forEach(btn=>btn.onclick=()=>openEditQuestion(Number(btn.dataset.editImport)));
   $$('[data-delete-import]').forEach(btn=>btn.onclick=()=>{const i=Number(btn.dataset.deleteImport);if(confirm('删除这道识别结果？')){importCache.splice(i,1);importSelected=new Set([...importSelected].map(x=>x>i?x-1:x).filter(x=>x!==i));renderImportPreview(importCache)}});
+  const aiAnalysisBtn=$('#ai-gen-analysis-btn');
+  if(aiAnalysisBtn)aiAnalysisBtn.onclick=async()=>{
+    if(!isAiConfigured()){toast('请先在设置/导出页配置 AI 接口。','warn');return}
+    aiAnalysisBtn.disabled=true;aiAnalysisBtn.textContent='AI 正在生成解析...';
+    try{
+      const results=await aiGenerateAnalysisForQuestions(importCache);
+      if(!results.length){toast('AI 未返回有效解析内容。','warn');aiAnalysisBtn.disabled=false;aiAnalysisBtn.textContent='AI 生成解析（重试）';return}
+      // 只展示结果，不自动写入 importCache
+      const map=new Map();let matched=0;
+      results.forEach(item=>{
+        const q=importCache.find(qq=>qq.id===item.questionId);
+        if(q&&item.analysis){map.set(q.id,{questionId:q.id,analysis:item.analysis.trim(),question:q.question,type:q.type,existingAnalysis:q.analysis||''});matched++}
+        else if(q){map.set(q.id,{questionId:q.id,analysis:'',question:q.question,type:q.type,existingAnalysis:q.analysis||'',empty:true})}
+      });
+      const hasExisting=new Set();importCache.forEach(q=>{if(q.analysis)hasExisting.add(q.id)});
+      const items=[...map.values()];
+      const analyzable=items.filter(it=>!it.empty);
+      const skipped=items.length-analyzable.length;
+      const overwriteCount=analyzable.filter(it=>it.existingAnalysis).length;
+      const html=analyzable.map((it,idx)=>{
+        const preview=it.question?esc(short(it.question,60)):'';
+        const existingTag=it.existingAnalysis?'<span class="pill" style="background:#fff3e0">已有解析将覆盖</span>':'';
+        return `<div class="ai-analysis-item" style="margin:6px 0;padding:8px;border:1px solid rgba(120,144,180,.18);border-radius:10px;background:rgba(255,255,255,.8)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="flex:1;min-width:0"><b>第${idx+1}题</b> ${esc(TYPE_LABEL[it.type]||it.type||'')}｜${preview}${existingTag}</div>
+          <button class="ghost mini-btn ai-apply-analysis" data-qid="${esc(it.questionId)}" type="button">采纳此解析</button>
+        </div>
+        <div style="margin-top:4px;color:#555;font-size:13px;line-height:1.5;max-height:120px;overflow-y:auto;white-space:pre-wrap">${esc(it.analysis)}</div>
+        </div>`;
+      }).join('');
+      const summary=`共生成 ${analyzable.length} 条解析${skipped?'（跳过 '+skipped+' 条无内容）':''}${overwriteCount?'，其中 '+overwriteCount+' 道已有解析将被覆盖':''}`;
+      $('#import-summary').insertAdjacentHTML('afterend',`<div id="ai-analysis-report" class="notice ok" style="margin-top:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center"><b>AI 解析报告</b><span>${summary}</span><div class="row-actions"><button class="ghost mini-btn" id="ai-apply-all-btn" type="button">全部采纳</button><button class="ghost mini-btn" id="ai-dismiss-report-btn" type="button">关闭</button></div></div>
+        <div style="max-height:360px;overflow-y:auto;margin-top:8px">${html||'<p class="muted">无有效解析内容。</p>'}</div>
+      </div>`);
+      $('#ai-dismiss-report-btn').onclick=()=>{const el=$('#ai-analysis-report');if(el)el.remove();aiAnalysisBtn.disabled=false;aiAnalysisBtn.textContent='AI 生成解析'};
+      $('#ai-apply-all-btn').onclick=()=>{
+        let applied=0;
+        analyzable.forEach(it=>{const q=importCache.find(qq=>qq.id===it.questionId);if(q){q.analysis=it.analysis;applied++}});
+        renderImportPreview(importCache);
+        const report=$('#ai-analysis-report');if(report)report.remove();
+        aiAnalysisBtn.disabled=false;aiAnalysisBtn.textContent='AI 生成解析';
+        toast(`已采纳全部 ${applied} 条 AI 解析。`,'ok');
+      };
+      $$('.ai-apply-analysis').forEach(btn=>{btn.onclick=()=>{
+        const qid=btn.dataset.qid;
+        const q=importCache.find(qq=>qq.id===qid);
+        if(q&&map.has(qid)){q.analysis=map.get(qid).analysis;toast('已采纳该题解析。','ok');btn.disabled=true;btn.textContent='已采纳'}
+        const remaining=$$('.ai-apply-analysis').filter(b=>!b.disabled).length;
+        if(!remaining){const report=$('#ai-analysis-report');if(report)report.remove();aiAnalysisBtn.disabled=false;aiAnalysisBtn.textContent='AI 生成解析';renderImportPreview(importCache)}
+      }});
+      aiAnalysisBtn.textContent='AI 生成解析（查看报告）';
+    }catch(e){toast('AI 生成解析失败：'+e.message,'danger');aiAnalysisBtn.disabled=false;aiAnalysisBtn.textContent='AI 生成解析（重试）'}
+  };
 }
 function batchDeleteImportSelected(){
   const ids=[...importSelected].filter(i=>i>=0&&i<importCache.length).sort((a,b)=>b-a);
@@ -5923,6 +6114,7 @@ function setupEnhancedDataToolsV23(){
   ensureBackupFileInputV23();
   ensureBankManageExportPanelV23();
   ensureSettingsBackupPanelV23();
+  ensureSettingsAIPanel();
   if(!exportBankSelectedV23.size)exportBankSelectedV23=new Set(state.banks.map(b=>b.id));
   renderExportBankSummaryV23();
 }
@@ -5979,6 +6171,39 @@ function ensureSettingsBackupPanelV23(){
   $('#settings-copy-all-backup-v23').onclick=copyAllBackupJsonV23;
   $('#settings-import-backup-v23').onclick=()=>{backupImportModeV23=$('#settings-backup-mode-v23')?.value||'overwrite';$('#backup-json-file-v23').click()};
   const oldAll=$('#export-all-btn');if(oldAll)oldAll.onclick=exportAllBackupV23;
+}
+function ensureSettingsAIPanel(){
+  if($('#settings-ai-panel'))return;
+  const settingsCard=$('#settings .card');if(!settingsCard)return;
+  const cfg=getAiConfig();
+  settingsCard.insertAdjacentHTML('beforeend',`<div id="settings-ai-panel" class="data-tools-v23">
+    <h2>AI 功能配置</h2>
+    <p class="muted">配置 OpenAI 兼容接口（如 DeepSeek、OpenAI、通义千问等）后，可在导入页使用 AI 生成解析，在练习页使用 AI 单题分析。API Key 仅保存在浏览器本地。</p>
+    <div class="form-grid">
+      <label>API 地址<input id="ai-api-base" type="url" placeholder="https://api.deepseek.com" value="${esc(cfg.apiBaseUrl)}" /></label>
+      <label>API Key<input id="ai-api-key" type="password" placeholder="sk-..." value="${esc(cfg.apiKey)}" /></label>
+      <label>模型名称<input id="ai-model-name" placeholder="deepseek-chat" value="${esc(cfg.modelName)}" /></label>
+    </div>
+    <div class="actions wrap-v23">
+      <button class="primary" id="ai-save-config-btn" type="button">保存配置</button>
+      <button class="ghost" id="ai-test-connection-btn" type="button">测试连接</button>
+      <span id="ai-config-status" class="muted"></span>
+    </div>
+    <p class="muted">提示：AI 解析和 AI 分析会在每次触发时发送请求，请确保 API 额度充足。AI 结果仅作参考，不会自动修改题库答案或解析。</p>
+  </div>`);
+  $('#ai-save-config-btn').onclick=()=>{
+    state.settings=state.settings&&typeof state.settings==='object'?state.settings:{};
+    state.settings.aiConfig={apiBaseUrl:$('#ai-api-base')?.value?.trim()||'',apiKey:$('#ai-api-key')?.value?.trim()||'',modelName:$('#ai-model-name')?.value?.trim()||'deepseek-chat'};
+    saveSilent();
+    $('#ai-config-status').textContent='已保存。';
+    setTimeout(()=>{const el=$('#ai-config-status');if(el&&el.textContent==='已保存。')el.textContent=''},3000);
+  };
+  $('#ai-test-connection-btn').onclick=async()=>{
+    const status=$('#ai-config-status');if(!status)return;
+    status.textContent='正在测试连接...';
+    try{const msg=await aiTestConnection();status.textContent=msg;}
+    catch(e){status.textContent='连接失败：'+e.message;}
+  };
 }
 function injectDataToolsStyleV23(){
   if($('#data-tools-style-v23'))return;
@@ -6090,6 +6315,7 @@ function upgradeState(){
   state.wrongBook=state.wrongBook&&typeof state.wrongBook==='object'?state.wrongBook:{};
   state.settings=state.settings&&typeof state.settings==='object'?state.settings:{};
   state.settings.practiceProgressV58916=state.settings.practiceProgressV58916&&typeof state.settings.practiceProgressV58916==='object'&&!Array.isArray(state.settings.practiceProgressV58916)?state.settings.practiceProgressV58916:{};
+  state.settings.aiConfig=state.settings.aiConfig&&typeof state.settings.aiConfig==='object'?state.settings.aiConfig:{apiBaseUrl:'',apiKey:'',modelName:'deepseek-chat'};
   state.favorites=state.favorites&&typeof state.favorites==='object'?state.favorites:{};
   state.crossPlatformMeta=state.crossPlatformMeta&&typeof state.crossPlatformMeta==='object'?state.crossPlatformMeta:{favoriteQuestions:{}};
   state.crossPlatformMeta.favoriteQuestions=state.crossPlatformMeta.favoriteQuestions&&typeof state.crossPlatformMeta.favoriteQuestions==='object'?state.crossPlatformMeta.favoriteQuestions:{};
@@ -6326,8 +6552,8 @@ function applyAnswerStateV26(root,q,chosen){if(isMultiBlankQuestionV58914(q)){$$
 function bindPracticeBlankDraftV58914(q,key,stateValue){if(!isMultiBlankQuestionV58914(q)||stateValue.answered||stateValue.revealed)return;$$('#practice-card .multi-blank-answer-input-v58914').forEach(input=>{input.oninput=()=>setPracticeAnswerStateV26(key,{chosen:multiBlankAnswerV58914('#practice-card')})})}
 function renderPracticeNavV26(){const buttons=(practice.items||[]).map((item,i)=>{const q=practiceQuestionV8916(item),st=getPracticeAnswerStateV26(practiceItemKeyV8916(item)),cls=[i===practice.idx?'current':'',st.answered?'done':'',st.correct===true?'ok':st.correct===false?'bad':'',isFavoriteV27(q.id,practiceItemBankIdV8916(item))?'favorite':''].filter(Boolean).join(' ');return `<button type="button" class="${cls}" data-practice-jump="${i}" title="第${i+1}题">${i+1}</button>`}).join('');return `<div id="practice-nav-v26" class="practice-nav-v26"><b>答题卡</b><div class="practice-nav-grid-v26">${buttons}</div></div>`}
 function submitPractice(item,reveal){const q=practiceQuestionV8916(item),key=practiceItemKeyV8916(item);const chosen=collectAnswer('#practice-card',q);if(!hasAnswerValueV58914(chosen)&&!reveal){$('#p-feedback').innerHTML='<div class="feedback warn">请先作答，再提交。</div>';return}if(q.type==='short'){showSubjectiveFeedback(item,chosen,reveal);return}const ok=!reveal&&sameAnswerForQuestion(q,chosen,q.answer);if(!reveal)recordPracticeAnswer(item,chosen,ok);else setPracticeAnswerStateV26(key,{chosen,revealed:true,correct:null});markOptions('#practice-card',q,chosen);showAnsweredStateV26(q,getPracticeAnswerStateV26(key));refreshPracticeStatsV30();saveSilent();renderStats()}
-function showAnsweredStateV26(q,st){markOptions('#practice-card',q,st.chosen||[]);$('#p-feedback').innerHTML=`<div class="feedback ${st.revealed?'warn':st.correct?'ok':'bad'}"><b>${st.revealed?'已显示参考答案':st.correct?'✓ 回答正确':'✕ 这题要再看一遍'}</b>${isMultiBlankQuestionV58914(q)?renderMultiBlankComparisonV58914(q.blankAnswers,st.chosen||[],true):'｜'+feedbackAnswerHtmlV58914(q,st.chosen||[])}${q.analysis?'<br>解析：'+renderQuestionContent(q.analysis):''}</div>`;const sub=$('#p-submit'),rev=$('#p-reveal');if(sub)sub.disabled=true;if(rev)rev.disabled=true}
-function showSubjectiveFeedback(item,chosen,reveal){const q=practiceQuestionV8916(item),key=practiceItemKeyV8916(item),user=chosen.join('；')||'未填写';setPracticeAnswerStateV26(key,{chosen,revealed:!!reveal});$('#p-feedback').innerHTML=`<div class="feedback warn">你的作答：${esc(user)}<br>参考答案：${esc(q.answer.join('；')||'未提供')}${q.analysis?'<br>解析：'+renderQuestionContent(q.analysis):''}<br><div class="actions"><button class="primary" id="p-self-right">判为正确</button><button class="danger" id="p-self-wrong">判为错误</button></div></div>`;$('#p-submit').disabled=true;$('#p-reveal').disabled=true;$('#p-self-right').onclick=()=>{recordPracticeAnswer(item,chosen,true);$('#p-self-right').disabled=true;$('#p-self-wrong').disabled=true;saveSilent();renderStats();renderPracticeQuestion()};$('#p-self-wrong').onclick=()=>{recordPracticeAnswer(item,chosen,false);$('#p-self-right').disabled=true;$('#p-self-wrong').disabled=true;saveSilent();renderStats();renderPracticeQuestion()}}
+function showAnsweredStateV26(q,st){markOptions('#practice-card',q,st.chosen||[]);const aiBtnHtml=isAiConfigured()?`<br><button class="ghost mini-btn" id="p-ai-analyze" type="button" style="margin-top:4px">AI 分析本题</button><div id="p-ai-result" style="margin-top:8px"></div>`:'';$('#p-feedback').innerHTML=`<div class="feedback ${st.revealed?'warn':st.correct?'ok':'bad'}"><b>${st.revealed?'已显示参考答案':st.correct?'✓ 回答正确':'✕ 这题要再看一遍'}</b>${isMultiBlankQuestionV58914(q)?renderMultiBlankComparisonV58914(q.blankAnswers,st.chosen||[],true):'｜'+feedbackAnswerHtmlV58914(q,st.chosen||[])}${q.analysis?'<br>解析：'+renderQuestionContent(q.analysis):''}${aiBtnHtml}</div>`;const sub=$('#p-submit'),rev=$('#p-reveal');if(sub)sub.disabled=true;if(rev)rev.disabled=true;const aiBtn=$('#p-ai-analyze');if(aiBtn)aiBtn.onclick=async()=>{aiBtn.disabled=true;aiBtn.textContent='AI 正在分析...';const resultEl=$('#p-ai-result');try{const result=await aiAnalyzeSingleQuestion(q,st.chosen||[]);if(resultEl)resultEl.innerHTML=`<div class="feedback ${result.needsReview?'warn':'ok'}"><b>AI 分析</b>${result.suggestedAnswer?'｜建议答案：'+esc(result.suggestedAnswer):''}${result.matchesLocalAnswer!=null?'｜'+(result.matchesLocalAnswer?'与题库一致':'与题库不一致'):''}<br>${esc(result.analysis||'')}<br><small>置信度：${esc(result.confidence||'MEDIUM')}${result.needsReview?' ⚠ 需要人工确认':''}${result.warning?' — '+esc(result.warning):''}</small></div>`}catch(e){if(resultEl)resultEl.innerHTML=`<div class="feedback bad">AI 分析失败：${esc(e.message)}</div>`;aiBtn.disabled=false;aiBtn.textContent='AI 分析本题（重试）'}}}
+function showSubjectiveFeedback(item,chosen,reveal){const q=practiceQuestionV8916(item),key=practiceItemKeyV8916(item),user=chosen.join('；')||'未填写';setPracticeAnswerStateV26(key,{chosen,revealed:!!reveal});const aiBtnHtml=isAiConfigured()?`<button class="ghost mini-btn" id="p-ai-analyze" type="button">AI 分析</button>`:'';$('#p-feedback').innerHTML=`<div class="feedback warn">你的作答：${esc(user)}<br>参考答案：${esc(q.answer.join('；')||'未提供')}${q.analysis?'<br>解析：'+renderQuestionContent(q.analysis):''}<br><div class="actions"><button class="primary" id="p-self-right">判为正确</button><button class="danger" id="p-self-wrong">判为错误</button>${aiBtnHtml}</div><div id="p-ai-result" style="margin-top:8px"></div></div>`;$('#p-submit').disabled=true;$('#p-reveal').disabled=true;$('#p-self-right').onclick=()=>{recordPracticeAnswer(item,chosen,true);$('#p-self-right').disabled=true;$('#p-self-wrong').disabled=true;saveSilent();renderStats();renderPracticeQuestion()};$('#p-self-wrong').onclick=()=>{recordPracticeAnswer(item,chosen,false);$('#p-self-right').disabled=true;$('#p-self-wrong').disabled=true;saveSilent();renderStats();renderPracticeQuestion()};const aiBtn=$('#p-ai-analyze');if(aiBtn)aiBtn.onclick=async()=>{aiBtn.disabled=true;aiBtn.textContent='AI 正在分析...';const resultEl=$('#p-ai-result');try{const result=await aiAnalyzeSingleQuestion(q,chosen||[]);if(resultEl)resultEl.innerHTML=`<div class="feedback ${result.needsReview?'warn':'ok'}"><b>AI 分析</b>${result.suggestedAnswer?'｜建议答案：'+esc(result.suggestedAnswer):''}${result.matchesLocalAnswer!=null?'｜'+(result.matchesLocalAnswer?'与题库一致':'与题库不一致'):''}<br>${esc(result.analysis||'')}<br><small>置信度：${esc(result.confidence||'MEDIUM')}${result.needsReview?' ⚠ 需要人工确认':''}${result.warning?' — '+esc(result.warning):''}</small></div>`}catch(e){if(resultEl)resultEl.innerHTML=`<div class="feedback bad">AI 分析失败：${esc(e.message)}</div>`;aiBtn.disabled=false;aiBtn.textContent='AI 分析（重试）'}}}
 function recordPracticeAnswer(item,chosen,ok){const q=practiceQuestionV8916(item),key=practiceItemKeyV8916(item),bid=practiceItemBankIdV8916(item);const current=getPracticeAnswerStateV26(key);if(current.answered)return;practice.answered++;if(ok){practice.correct++;markRight(q.id,bid)}else{practice.wrong++;addWrong(q.id,bid)}setPracticeAnswerStateV26(key,{chosen:[...chosen],answered:true,revealed:false,correct:!!ok,answeredAt:now()});practice.details.push(makeAnswerDetail(item,chosen,ok,scoreOf(q),scoreOf(q)))}
 function getFavoriteIdsV27(bid=activeBank().id){state.favorites=state.favorites||{};return Array.isArray(state.favorites[bid])?state.favorites[bid]:[];}
 function setFavoriteIdsV27(ids,bid=activeBank().id){state.favorites=state.favorites||{};state.crossPlatformMeta=state.crossPlatformMeta&&typeof state.crossPlatformMeta==='object'?state.crossPlatformMeta:{favoriteQuestions:{}};state.crossPlatformMeta.favoriteQuestions=state.crossPlatformMeta.favoriteQuestions&&typeof state.crossPlatformMeta.favoriteQuestions==='object'?state.crossPlatformMeta.favoriteQuestions:{};const next=[...new Set((ids||[]).filter(Boolean))];state.favorites[bid]=next;const meta=state.crossPlatformMeta.favoriteQuestions[bid]&&typeof state.crossPlatformMeta.favoriteQuestions[bid]==='object'?state.crossPlatformMeta.favoriteQuestions[bid]:{};Object.keys(meta).forEach(qid=>{if(!next.includes(qid))delete meta[qid]});next.forEach(qid=>{if(!meta[qid])meta[qid]={favoritedAt:Date.now()}});state.crossPlatformMeta.favoriteQuestions[bid]=meta;}
