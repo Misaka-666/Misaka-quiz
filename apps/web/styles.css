@@ -1884,7 +1884,7 @@ input:focus,select:focus,textarea:focus{
 
 
 
-/* SHIROHA_V28_1_BANK_MOBILE_LAYOUT_START
+/* MISAKA_V28_1_BANK_MOBILE_LAYOUT_START
    题库管理移动端结构优化：当前题库上方统一选择，卡片只展示信息，单题库操作收进更多菜单。 */
 .bank-manage-toolbar-v28{
   background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(239,247,255,.92))!important;
@@ -2080,10 +2080,10 @@ input:focus,select:focus,textarea:focus{
     padding:8px 4px!important;
   }
 }
-/* SHIROHA_V28_1_BANK_MOBILE_LAYOUT_END */
+/* MISAKA_V28_1_BANK_MOBILE_LAYOUT_END */
 
 
-/* SHIROHA_V28_2_ASSET_REFRESH_START
+/* MISAKA_V28_2_ASSET_REFRESH_START
    首页与分页素材替换：统一蓝白云母亚克力风格，减少素材数量并提升融合度。 */
 .hero-card,.import-stage-panel,.page-art-strip,.asset-reference-details{
   position:relative;
@@ -2142,10 +2142,10 @@ input:focus,select:focus,textarea:focus{
     max-height:132px;
   }
 }
-/* SHIROHA_V28_2_ASSET_REFRESH_END */
+/* MISAKA_V28_2_ASSET_REFRESH_END */
 
 
-/* SHIROHA_V28_3_VISUAL_POLISH_START
+/* MISAKA_V28_3_VISUAL_POLISH_START
    视觉目标：蓝白统一、云母亚克力质感、素材融入卡片；导入备份区域独立，不夹在普通题库导入流程中。 */
 :root{
   --sq-blue:#2f6fed;
@@ -2324,10 +2324,10 @@ input:focus,select:focus,textarea:focus{
     max-height:126px!important;
   }
 }
-/* SHIROHA_V28_3_VISUAL_POLISH_END */
+/* MISAKA_V28_3_VISUAL_POLISH_END */
 
 
-/* SHIROHA_V28_3_1_IMPORT_BACKUP_POSITION_START
+/* MISAKA_V28_3_1_IMPORT_BACKUP_POSITION_START
    备份 JSON 导入保留在导入题库页底部，不再夹在普通题库导入、双文件导入和识别结果之间。 */
 .backup-restore-bottom-v2831{
   margin-top:28px!important;
@@ -2358,10 +2358,10 @@ input:focus,select:focus,textarea:focus{
     margin-top:22px!important;
   }
 }
-/* SHIROHA_V28_3_1_IMPORT_BACKUP_POSITION_END */
+/* MISAKA_V28_3_1_IMPORT_BACKUP_POSITION_END */
 
 
-/* SHIROHA_V28_3_3_IMPORT_ART_BG_FIX_START
+/* MISAKA_V28_3_3_IMPORT_ART_BG_FIX_START
    修复导入页素材右侧奇怪蓝色圆形背景，改为更干净的蓝白渐变，不干扰素材本身显示。 */
 .import-stage-panel{
   background:
@@ -2385,10 +2385,10 @@ input:focus,select:focus,textarea:focus{
       linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(246,250,255,.98) 72%, rgba(239,246,255,.95) 100%) !important;
   }
 }
-/* SHIROHA_V28_3_3_IMPORT_ART_BG_FIX_END */
+/* MISAKA_V28_3_3_IMPORT_ART_BG_FIX_END */
 
 
-/* SHIROHA_V28_3_4_SAFE_PAGE_FIX_START
+/* MISAKA_V28_3_4_SAFE_PAGE_FIX_START
    安全修复：不再改写 index.html 的 section 结构，避免页面路由全部落到导入页。
    只通过样式修正导入页视觉和备份区域的呈现，不破坏页面切换。 */
 .view{display:none}
@@ -2426,10 +2426,10 @@ input:focus,select:focus,textarea:focus{
       linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(246,250,255,.98) 72%, rgba(239,246,255,.95) 100%) !important;
   }
 }
-/* SHIROHA_V28_3_4_SAFE_PAGE_FIX_END */
+/* MISAKA_V28_3_4_SAFE_PAGE_FIX_END */
 
 
-/* SHIROHA_V28_4_PRACTICE_ART_FIX_START
+/* MISAKA_V28_4_PRACTICE_ART_FIX_START
    修复刷题练习页素材背后的奇怪蓝色圆形区域，并让素材更大、更靠中。 */
 .practice-art-strip{
   grid-template-columns:minmax(0,1fr) minmax(220px,360px) !important;
@@ -2478,10 +2478,10 @@ input:focus,select:focus,textarea:focus{
     max-height:160px !important;
   }
 }
-/* SHIROHA_V28_4_PRACTICE_ART_FIX_END */
+/* MISAKA_V28_4_PRACTICE_ART_FIX_END */
 
 
-/* SHIROHA_V28_4_1_CARD_ART_FIX_START
+/* MISAKA_V28_4_1_CARD_ART_FIX_START
    修复插画卡片本身的蓝色气泡干扰；图片尺寸改为克制显示，保证素材完整、不挤压卡片。 */
 
 /* 去掉插画卡片内部过重的圆形蓝色气泡，不再让背景块压到素材上。 */
@@ -2639,10 +2639,10 @@ input:focus,select:focus,textarea:focus{
   }
 }
 
-/* SHIROHA_V28_4_1_CARD_ART_FIX_END */
+/* MISAKA_V28_4_1_CARD_ART_FIX_END */
 
 
-/* SHIROHA_V28_4_2_ART_SIZE_TUNING_START
+/* MISAKA_V28_4_2_ART_SIZE_TUNING_START
    按页面微调插画在卡片里的尺寸与位置：
    - 题库管理：缩小约20%
    - 刷题练习：放大约20%，并移到更居中的位置
@@ -2747,10 +2747,10 @@ input:focus,select:focus,textarea:focus{
     max-height:102px !important;
   }
 }
-/* SHIROHA_V28_4_2_ART_SIZE_TUNING_END */
+/* MISAKA_V28_4_2_ART_SIZE_TUNING_END */
 
 
-/* SHIROHA_V28_4_4_ART_BALANCE_START
+/* MISAKA_V28_4_4_ART_BALANCE_START
    插画尺寸二次收敛：不再激进放大，保证素材在卡片里完整显示，并兼顾卡片高度。
    只调“图片在卡片中的显示尺寸和位置”，不替换素材。 */
 
@@ -2963,10 +2963,10 @@ input:focus,select:focus,textarea:focus{
     max-height:94px !important;
   }
 }
-/* SHIROHA_V28_4_4_ART_BALANCE_END */
+/* MISAKA_V28_4_4_ART_BALANCE_END */
 
 
-/* SHIROHA_V28_4_6_TITLE_AND_ART_BG_FIX_START
+/* MISAKA_V28_4_6_TITLE_AND_ART_BG_FIX_START
    修复页面双标题重复感：通过差异化内卡标题减弱重复；
    同时将分页插画区右侧背景统一为白色，不再使用淡蓝色块。 */
 .page-art-strip,
@@ -3001,10 +3001,10 @@ input:focus,select:focus,textarea:focus{
 .section-head .kicker + h2{
   letter-spacing:.01em;
 }
-/* SHIROHA_V28_4_6_TITLE_AND_ART_BG_FIX_END */
+/* MISAKA_V28_4_6_TITLE_AND_ART_BG_FIX_END */
 
 
-/* SHIROHA_V28_4_7_REMOVE_OUTER_TITLE_START
+/* MISAKA_V28_4_7_REMOVE_OUTER_TITLE_START
    直接移除顶部外层页面标题区域，仅保留右侧题库选择与保存数据操作。 */
 .topbar{
   justify-content:flex-end !important;
@@ -3022,10 +3022,10 @@ input:focus,select:focus,textarea:focus{
     padding-bottom:10px !important;
   }
 }
-/* SHIROHA_V28_4_7_REMOVE_OUTER_TITLE_END */
+/* MISAKA_V28_4_7_REMOVE_OUTER_TITLE_END */
 
 
-/* SHIROHA_V28_4_8_APP_READABILITY_NAV_START
+/* MISAKA_V28_4_8_APP_READABILITY_NAV_START
    App 成品界面修正：
    1) 隐藏开发阶段用于说明素材/布局的小字提示；
    2) 移动端表单不再横向溢出卡片；
@@ -3192,10 +3192,10 @@ button{
     box-shadow:0 10px 24px rgba(47,111,237,.14), inset 0 1px 0 rgba(255,255,255,.82) !important;
   }
 }
-/* SHIROHA_V28_4_8_APP_READABILITY_NAV_END */
+/* MISAKA_V28_4_8_APP_READABILITY_NAV_END */
 
 
-/* SHIROHA_V28_4_11_MOBILE_PERF_START
+/* MISAKA_V28_4_11_MOBILE_PERF_START
    移动端性能优化：
    - 导航切换不再触发全量 renderAll；
    - 移动端禁用/弱化 blur、backdrop-filter、大阴影和过多动画；
@@ -3273,9 +3273,9 @@ button{
     scroll-behavior:auto !important;
   }
 }
-/* SHIROHA_V28_4_11_MOBILE_PERF_END */
+/* MISAKA_V28_4_11_MOBILE_PERF_END */
 
-/* SHIROHA_WEB_V28_1_DESKTOP_LAYOUT_REBALANCE_START
+/* MISAKA_WEB_V28_1_DESKTOP_LAYOUT_REBALANCE_START
    目标：
    1) 桌面端核心内容不要铺得过宽；
    2) 顶部题库选择并入白色区域；
@@ -3396,9 +3396,9 @@ button{
     padding:24px !important;
   }
 }
-/* SHIROHA_WEB_V28_1_DESKTOP_LAYOUT_REBALANCE_END */
+/* MISAKA_WEB_V28_1_DESKTOP_LAYOUT_REBALANCE_END */
 
-/* SHIROHA_WEB_V28_2_SIDEBAR_AND_FOCUS_POLISH_START
+/* MISAKA_WEB_V28_2_SIDEBAR_AND_FOCUS_POLISH_START
    左侧导航可收起；收起后主画面居中并保持左右留白；
    顶部题库条与核心内容等宽；考试模式也进入沉浸式；放大刷题收藏/退出按钮。 */
 @media (min-width:721px){
@@ -3619,10 +3619,10 @@ body.exam-focus #exam-card{
     flex:1 1 120px !important;
   }
 }
-/* SHIROHA_WEB_V28_2_SIDEBAR_AND_FOCUS_POLISH_END */
+/* MISAKA_WEB_V28_2_SIDEBAR_AND_FOCUS_POLISH_END */
 
 
-/* SHIROHA_WEB_V28_4_SPLASH_AND_STABLE_CENTER_START
+/* MISAKA_WEB_V28_4_SPLASH_AND_STABLE_CENTER_START
    同步 App 端开屏动画；桌面端导航收窄并与主体布局解耦，
    收起导航时不再改变中心内容宽度，避免画面跳动。 */
 .app-splash{
@@ -3708,16 +3708,16 @@ body.exam-focus #exam-card{
 
 @media (min-width:721px){
   :root{
-    --shiroha-side-width:220px;
-    --shiroha-content-width:1080px;
+    --misaka-side-width:220px;
+    --misaka-content-width:1080px;
   }
 
   .app{
-    grid-template-columns:var(--shiroha-side-width) minmax(0,1fr) !important;
+    grid-template-columns:var(--misaka-side-width) minmax(0,1fr) !important;
   }
 
   .side{
-    width:var(--shiroha-side-width) !important;
+    width:var(--misaka-side-width) !important;
     padding:18px 16px !important;
   }
 
@@ -3744,10 +3744,10 @@ body.exam-focus #exam-card{
 
   /* 收起时保留同等布局列宽，只隐藏导航本身，中心区不会位移或变宽。 */
   body.side-collapsed .app{
-    grid-template-columns:var(--shiroha-side-width) minmax(0,1fr) !important;
+    grid-template-columns:var(--misaka-side-width) minmax(0,1fr) !important;
   }
   body.side-collapsed .side{
-    width:var(--shiroha-side-width) !important;
+    width:var(--misaka-side-width) !important;
     transform:translateX(-112%) !important;
     opacity:0 !important;
     pointer-events:none !important;
@@ -3757,8 +3757,8 @@ body.exam-focus #exam-card{
   }
   body.side-collapsed .main > .topbar,
   body.side-collapsed .main > .view.active{
-    width:min(var(--shiroha-content-width), calc(100vw - 360px)) !important;
-    max-width:var(--shiroha-content-width) !important;
+    width:min(var(--misaka-content-width), calc(100vw - 360px)) !important;
+    max-width:var(--misaka-content-width) !important;
   }
 
   .sidebar-toggle{
@@ -3774,8 +3774,8 @@ body.exam-focus #exam-card{
 
   .main > .topbar,
   .main > .view.active{
-    width:min(var(--shiroha-content-width), calc(100vw - 360px)) !important;
-    max-width:var(--shiroha-content-width) !important;
+    width:min(var(--misaka-content-width), calc(100vw - 360px)) !important;
+    max-width:var(--misaka-content-width) !important;
     margin-left:auto !important;
     margin-right:auto !important;
   }
@@ -3829,17 +3829,17 @@ body.exam-focus #exam-card{
   .app-splash-logo,
   .app-splash-dots span{animation:none !important}
 }
-/* SHIROHA_WEB_V28_4_SPLASH_AND_STABLE_CENTER_END */
+/* MISAKA_WEB_V28_4_SPLASH_AND_STABLE_CENTER_END */
 
-/* SHIROHA_WEB_V28_5_CENTER_LOCK_START
+/* MISAKA_WEB_V28_5_CENTER_LOCK_START
    最后微调：桌面端主体区域以视口为基准居中；左侧导航改为固定浮层，
    因此收起/展开导航不会改变中心区域的位置和宽度。 */
 @media (min-width:1100px){
   :root{
-    --shiroha-side-width:188px;
-    --shiroha-side-left:20px;
-    --shiroha-content-width:1080px;
-    --shiroha-content-safe-gap:456px;
+    --misaka-side-width:188px;
+    --misaka-side-left:20px;
+    --misaka-content-width:1080px;
+    --misaka-content-safe-gap:456px;
   }
 
   .app{
@@ -3850,10 +3850,10 @@ body.exam-focus #exam-card{
 
   .side{
     position:fixed !important;
-    left:var(--shiroha-side-left) !important;
+    left:var(--misaka-side-left) !important;
     top:18px !important;
     bottom:18px !important;
-    width:var(--shiroha-side-width) !important;
+    width:var(--misaka-side-width) !important;
     height:auto !important;
     padding:16px 14px !important;
     border-radius:24px !important;
@@ -3896,8 +3896,8 @@ body.exam-focus #exam-card{
   .main > .view.active,
   body.side-collapsed .main > .topbar,
   body.side-collapsed .main > .view.active{
-    width:min(var(--shiroha-content-width), calc(100vw - var(--shiroha-content-safe-gap))) !important;
-    max-width:var(--shiroha-content-width) !important;
+    width:min(var(--misaka-content-width), calc(100vw - var(--misaka-content-safe-gap))) !important;
+    max-width:var(--misaka-content-width) !important;
     margin-left:auto !important;
     margin-right:auto !important;
   }
@@ -3908,7 +3908,7 @@ body.exam-focus #exam-card{
   }
 
   body.side-collapsed .side{
-    transform:translateX(calc(-1 * (var(--shiroha-side-width) + 52px))) !important;
+    transform:translateX(calc(-1 * (var(--misaka-side-width) + 52px))) !important;
     opacity:0 !important;
     pointer-events:none !important;
   }
@@ -3927,16 +3927,16 @@ body.exam-focus #exam-card{
 
 @media (min-width:1100px) and (max-width:1280px){
   :root{
-    --shiroha-side-width:176px;
-    --shiroha-side-left:16px;
-    --shiroha-content-safe-gap:416px;
+    --misaka-side-width:176px;
+    --misaka-side-left:16px;
+    --misaka-content-safe-gap:416px;
   }
   .brand span{display:none !important;}
   .nav{font-size:13px !important;padding:10px 10px !important;}
 }
-/* SHIROHA_WEB_V28_5_CENTER_LOCK_END */
+/* MISAKA_WEB_V28_5_CENTER_LOCK_END */
 
-/* SHIROHA_V28_2_DUAL_LAYOUT_REFINEMENT_START
+/* MISAKA_V28_2_DUAL_LAYOUT_REFINEMENT_START
    双端通用精修：稳定移动端页面位置、收紧底部导航、统一角色素材落点。 */
 @media(max-width:720px){
   html,
@@ -4315,10 +4315,10 @@ body.exam-focus #exam-card{
     max-width:106px !important;
   }
 }
-/* SHIROHA_V28_2_DUAL_LAYOUT_REFINEMENT_END */
+/* MISAKA_V28_2_DUAL_LAYOUT_REFINEMENT_END */
 
 
-/* SHIROHA_WEB_V28_3_HOME_DASHBOARD_REFLOW_START
+/* MISAKA_WEB_V28_3_HOME_DASHBOARD_REFLOW_START
    Web 首页专属：解决首页主卡片大面积空白，换用压缩后的原始挥手素材，并按桌面端仪表盘重新排布。 */
 #dashboard .dashboard-home-hero{
   display:grid !important;
@@ -4528,10 +4528,10 @@ body.exam-focus #exam-card{
   #dashboard .dashboard-character-card{min-height:190px !important;}
   #dashboard .dashboard-character-card .hero-mascot-main{max-height:190px !important;}
 }
-/* SHIROHA_WEB_V28_3_HOME_DASHBOARD_REFLOW_END */
+/* MISAKA_WEB_V28_3_HOME_DASHBOARD_REFLOW_END */
 
 
-/* SHIROHA_WEB_V28_4_QUICK_CARD_IMAGE_FIT_START
+/* MISAKA_WEB_V28_4_QUICK_CARD_IMAGE_FIT_START
    Web 首页小修：快捷卡配色收敛到蓝白体系，并缩小角色素材，优先完整显示。 */
 #dashboard .dashboard-action-card{
   min-height:118px !important;
@@ -4655,9 +4655,9 @@ body.exam-focus #exam-card{
     transform:none !important;
   }
 }
-/* SHIROHA_WEB_V28_4_QUICK_CARD_IMAGE_FIT_END */
+/* MISAKA_WEB_V28_4_QUICK_CARD_IMAGE_FIT_END */
 
-/* SHIROHA_WEB_V28_5_ART_WHITE_CARD_FILL_START
+/* MISAKA_WEB_V28_5_ART_WHITE_CARD_FILL_START
    Web 版图片卡片白底修复：透明素材不再透出页面蓝底，所有带图卡片底层统一填充白色。 */
 #dashboard .dashboard-character-card,
 .hero-visual-card,
@@ -4719,13 +4719,13 @@ body.exam-focus #exam-card{
   background:transparent !important;
   mix-blend-mode:normal !important;
 }
-/* SHIROHA_WEB_V28_5_ART_WHITE_CARD_FILL_END */
+/* MISAKA_WEB_V28_5_ART_WHITE_CARD_FILL_END */
 
 
 
 
 
-/* SHIROHA_WEB_V28_7_HOME_BALANCE_AND_PEEKING_REFINEMENT_START
+/* MISAKA_WEB_V28_7_HOME_BALANCE_AND_PEEKING_REFINEMENT_START
    Web 首页再平衡：左上版本标签上提、首屏左右区尽量等高；右下角 peeking 素材去卡片化并增加小隐藏按钮。 */
 #dashboard .dashboard-home-hero{
   grid-template-columns:minmax(0,1.22fr) minmax(332px,.78fr) !important;
@@ -4829,9 +4829,9 @@ body.exam-focus #exam-card{
 @media (max-width: 1320px){
   .web-peeking-wrap{display:none;}
 }
-/* SHIROHA_WEB_V28_7_HOME_BALANCE_AND_PEEKING_REFINEMENT_END */
+/* MISAKA_WEB_V28_7_HOME_BALANCE_AND_PEEKING_REFINEMENT_END */
 
-/* SHIROHA_WEB_V28_8_HOME_SPACE_AND_TOGGLE_TUNE_START
+/* MISAKA_WEB_V28_8_HOME_SPACE_AND_TOGGLE_TUNE_START
    Web 首页二次微调：缩小右侧图片区域，取消左侧下段被 auto 撑开的空白；隐藏按钮右移并降低存在感。 */
 #dashboard .dashboard-home-hero{
   min-height:338px !important;
@@ -4920,10 +4920,10 @@ body.exam-focus #exam-card{
     min-height:0 !important;
   }
 }
-/* SHIROHA_WEB_V28_8_HOME_SPACE_AND_TOGGLE_TUNE_END */
+/* MISAKA_WEB_V28_8_HOME_SPACE_AND_TOGGLE_TUNE_END */
 
 
-/* SHIROHA_WEB_V29_2_FORM_ACTIONS_AND_HOME_TUNE_START */
+/* MISAKA_WEB_V29_2_FORM_ACTIONS_AND_HOME_TUNE_START */
 #practice .web-settings-action-cell,
 #exam .web-settings-action-cell{
   display:flex;
@@ -5003,10 +5003,10 @@ body.exam-focus #exam-card{
     min-width:0;
   }
 }
-/* SHIROHA_WEB_V29_2_FORM_ACTIONS_AND_HOME_TUNE_END */
+/* MISAKA_WEB_V29_2_FORM_ACTIONS_AND_HOME_TUNE_END */
 
 
-/* SHIROHA_WEB_V29_3_HOME_BALANCE_REFINE_START
+/* MISAKA_WEB_V29_3_HOME_BALANCE_REFINE_START
    Web 首页精修：
    - 删除左侧底部三个说明性 mini metric 后，重新平衡左右区域；
    - 版本提示与快捷卡片之间拉开一点；
@@ -5096,10 +5096,10 @@ body.exam-focus #exam-card{
     grid-template-columns:1fr !important;
   }
 }
-/* SHIROHA_WEB_V29_3_HOME_BALANCE_REFINE_END */
+/* MISAKA_WEB_V29_3_HOME_BALANCE_REFINE_END */
 
 
-/* SHIROHA_WEB_V29_6_DOCX_IMAGE_IMPORT_FIX_START
+/* MISAKA_WEB_V29_6_DOCX_IMAGE_IMPORT_FIX_START
    DOCX 图片题导入显示：支持从 Word 中提取 png/jpeg/gif/webp/bmp/svg 图片并在题干中渲染。 */
 .question-media{
   margin:12px 0 10px;
@@ -5122,10 +5122,10 @@ body.exam-focus #exam-card{
   .question-media{margin:10px 0;padding:8px;border-radius:16px;}
   .question-image{max-height:360px;}
 }
-/* SHIROHA_WEB_V29_6_DOCX_IMAGE_IMPORT_FIX_END */
+/* MISAKA_WEB_V29_6_DOCX_IMAGE_IMPORT_FIX_END */
 
 
-/* SHIROHA_WEB_V29_7_DOCX_IMAGE_EXAM_VERIFIED_START
+/* MISAKA_WEB_V29_7_DOCX_IMAGE_EXAM_VERIFIED_START
    DOCX 图片题显示优化：导入阶段会压缩大图，这里限制展示尺寸，避免图形题/资料图撑开页面。 */
 .question-media{
   margin:14px 0;
@@ -5152,13 +5152,13 @@ body.exam-focus #exam-card{
   .question-media{padding:8px;border-radius:14px;margin:12px 0;}
   .question-image{max-height:360px;}
 }
-/* SHIROHA_WEB_V29_7_DOCX_IMAGE_EXAM_VERIFIED_END */
+/* MISAKA_WEB_V29_7_DOCX_IMAGE_EXAM_VERIFIED_END */
 
 
-/* SHIROHA_WEB_V29_8_IMPORT_REVIEW_ANALYSIS_AND_LONG_STEM_FIX
+/* MISAKA_WEB_V29_8_IMPORT_REVIEW_ANALYSIS_AND_LONG_STEM_FIX
    逻辑改动在 app.js；这里保留版本标记，便于确认样式包版本。 */
 
-/* SHIROHA_WEB_V30_PRACTICE_EXAM_CARDS_START
+/* MISAKA_WEB_V30_PRACTICE_EXAM_CARDS_START
    练习沉浸统计卡 + 考试沉浸答题卡。保持轻量蓝白卡片，避免移动端重阴影/重动画。 */
 .practice-stat-card-v30,
 .exam-answer-card-v30{
@@ -5280,9 +5280,9 @@ body.exam-focus .exam-q{
     padding:0;
   }
 }
-/* SHIROHA_WEB_V30_PRACTICE_EXAM_CARDS_END */
+/* MISAKA_WEB_V30_PRACTICE_EXAM_CARDS_END */
 
-/* SHIROHA_WEB_V31_IMMERSIVE_RIGHT_RAIL_START
+/* MISAKA_WEB_V31_IMMERSIVE_RIGHT_RAIL_START
    沉浸答题布局重构：正文留在左侧，统计/答题卡固定在右侧轻量侧栏。 */
 body.practice-focus #practice-card,
 body.exam-focus #exam-card{
@@ -5500,9 +5500,9 @@ body.exam-focus .exam-q{
     overflow:auto !important;
   }
 }
-/* SHIROHA_WEB_V31_IMMERSIVE_RIGHT_RAIL_END */
+/* MISAKA_WEB_V31_IMMERSIVE_RIGHT_RAIL_END */
 
-/* SHIROHA_WEB_V32_RIGHT_EDGE_AND_BANK_DELETE_FIX_START
+/* MISAKA_WEB_V32_RIGHT_EDGE_AND_BANK_DELETE_FIX_START
    练习：右侧只保留轻量统计卡，答题卡回到题目下方；考试答题卡贴右侧边缘；题库管理增加显式删除。 */
 .bank-delete-quick-v32{
   flex:0 0 auto !important;
@@ -5615,9 +5615,9 @@ body.exam-focus .exam-q{
     box-shadow:none !important;
   }
 }
-/* SHIROHA_WEB_V32_RIGHT_EDGE_AND_BANK_DELETE_FIX_END */
+/* MISAKA_WEB_V32_RIGHT_EDGE_AND_BANK_DELETE_FIX_END */
 
-/* SHIROHA_WEB_V33_RESTORE_FOCUS_AND_EDGE_CARDS_START
+/* MISAKA_WEB_V33_RESTORE_FOCUS_AND_EDGE_CARDS_START
    恢复沉浸练习/考试主体的居中答题纸；右侧辅助卡片独立贴边，不再重排正文。 */
 .bank-card-actions-v33{
   justify-self:end !important;
@@ -5857,9 +5857,9 @@ body.exam-focus #exam-card > .exam-side-v31 .exam-nav-grid-v30 button{
     flex:0 0 36px !important;
   }
 }
-/* SHIROHA_WEB_V33_RESTORE_FOCUS_AND_EDGE_CARDS_END */
+/* MISAKA_WEB_V33_RESTORE_FOCUS_AND_EDGE_CARDS_END */
 
-/* SHIROHA_WEB_V34_PANEL_ALIGNMENT_AND_HIDE_START
+/* MISAKA_WEB_V34_PANEL_ALIGNMENT_AND_HIDE_START
    右侧辅助面板与沉浸答题纸顶部对齐；面板可低调隐藏；题库卡片右侧操作保持并排。 */
 .bank-card-actions-v33{
   display:flex !important;
@@ -6019,10 +6019,10 @@ body.exam-rail-collapsed-v34 #exam-answer-card-v30 .rail-show-btn-v34{
     min-height:34px !important;
   }
 }
-/* SHIROHA_WEB_V34_PANEL_ALIGNMENT_AND_HIDE_END */
+/* MISAKA_WEB_V34_PANEL_ALIGNMENT_AND_HIDE_END */
 
 
-/* SHIROHA_WEB_V35_PANEL_MINI_AND_ALIGNMENT_FIX_START
+/* MISAKA_WEB_V35_PANEL_MINI_AND_ALIGNMENT_FIX_START
    只修正三处：隐藏态小按钮尺寸、练习/考试右侧面板对齐、题库卡片右侧操作并排。 */
 .bank-item-compact-v28{
   grid-template-columns:auto minmax(0,1fr) max-content !important;
@@ -6189,9 +6189,9 @@ body.exam-rail-collapsed-v34 #exam-answer-card-v30 .rail-show-btn-v34:hover{
     max-height:34px !important;
   }
 }
-/* SHIROHA_WEB_V35_PANEL_MINI_AND_ALIGNMENT_FIX_END */
+/* MISAKA_WEB_V35_PANEL_MINI_AND_ALIGNMENT_FIX_END */
 
-/* SHIROHA_WEB_V36_HOME_STATS_AND_PRACTICE_RAIL_FIX_START
+/* MISAKA_WEB_V36_HOME_STATS_AND_PRACTICE_RAIL_FIX_START
    首页学习统计改为卡片式；右侧统计/答题卡 top 由 JS 用实际主卡片位置校准。 */
 #dashboard .dashboard-stats-row{
   display:grid !important;
@@ -6265,10 +6265,10 @@ body.exam-rail-collapsed-v34 #exam-answer-card-v30 .rail-show-btn-v34:hover{
     top:var(--unused-focus-rail-top-v36,18px) !important;
   }
 }
-/* SHIROHA_WEB_V36_HOME_STATS_AND_PRACTICE_RAIL_FIX_END */
+/* MISAKA_WEB_V36_HOME_STATS_AND_PRACTICE_RAIL_FIX_END */
 
 
-/* SHIROHA_WEB_V37_RECORDS_AND_EXAM_CARD_COMPACT_FIX_START
+/* MISAKA_WEB_V37_RECORDS_AND_EXAM_CARD_COMPACT_FIX_START
    考试右侧答题卡进一步压缩并限制高度；练习退出直接回设置区；记录导航统一承载练习/考试记录。 */
 @media(min-width:1280px){
   body.exam-focus #exam-card.card{
@@ -6373,9 +6373,9 @@ body.exam-rail-collapsed-v34 #exam-answer-card-v30 .rail-show-btn-v34:hover{
     overflow:auto !important;
   }
 }
-/* SHIROHA_WEB_V37_RECORDS_AND_EXAM_CARD_COMPACT_FIX_END */
+/* MISAKA_WEB_V37_RECORDS_AND_EXAM_CARD_COMPACT_FIX_END */
 
-/* SHIROHA_WEB_V38_EXAM_MINI_AND_HOME_STATS_SOFTEN_START
+/* MISAKA_WEB_V38_EXAM_MINI_AND_HOME_STATS_SOFTEN_START
    修正考试答题卡隐藏态文字被裁切；弱化首页学习统计卡片的重色与蓝色横杠。 */
 @media(min-width:1280px){
   body.exam-rail-collapsed-v34 #exam-card > .exam-side-v31{
@@ -6463,9 +6463,9 @@ body.exam-rail-collapsed-v34 #exam-answer-card-v30 .rail-show-btn-v34:hover{
     font-size:12px !important;
   }
 }
-/* SHIROHA_WEB_V38_EXAM_MINI_AND_HOME_STATS_SOFTEN_END */
+/* MISAKA_WEB_V38_EXAM_MINI_AND_HOME_STATS_SOFTEN_END */
 
-/* SHIROHA_WEB_V40_COLLAPSED_BUTTON_AND_HOME_NUMBER_TONE_FIX_START
+/* MISAKA_WEB_V40_COLLAPSED_BUTTON_AND_HOME_NUMBER_TONE_FIX_START
    修正右侧栏隐藏态：只显示独立小按钮，不保留卡片外壳；首页学习统计只调整数字色彩，保留卡片材质。 */
 @media(min-width:1280px){
   body.practice-focus.practice-rail-collapsed-v34 #practice-card > .practice-side-v31,
@@ -6602,9 +6602,9 @@ body.exam-rail-collapsed-v34 #exam-answer-card-v30 .rail-show-btn-v34:hover{
   text-shadow:0 1px 0 rgba(255,255,255,.98),0 0 10px rgba(147,197,253,.16) !important;
   font-weight:800 !important;
 }
-/* SHIROHA_WEB_V40_COLLAPSED_BUTTON_AND_HOME_NUMBER_TONE_FIX_END */
+/* MISAKA_WEB_V40_COLLAPSED_BUTTON_AND_HOME_NUMBER_TONE_FIX_END */
 
-/* SHIROHA_WEB_V41_HOME_VERSION_AND_STAT_REBUILD_START
+/* MISAKA_WEB_V41_HOME_VERSION_AND_STAT_REBUILD_START
    首页版本文案更新；学习统计卡片整体重做为蓝白云母/亚克力质感，数字仅用浅蓝白色。 */
 #dashboard .dashboard-panel:has(.learning-stats-v41){
   min-height:260px !important;
@@ -6745,10 +6745,10 @@ body.exam-rail-collapsed-v34 #exam-answer-card-v30 .rail-show-btn-v34:hover{
     text-align:left !important;
   }
 }
-/* SHIROHA_WEB_V41_HOME_VERSION_AND_STAT_REBUILD_END */
+/* MISAKA_WEB_V41_HOME_VERSION_AND_STAT_REBUILD_END */
 
 
-/* SHIROHA_WEB_V42_HOME_STAT_SIMPLE_2X2_START
+/* MISAKA_WEB_V42_HOME_STAT_SIMPLE_2X2_START
    首页学习统计回到 2×2；数字使用黑色，整体保持干净蓝白卡片，不做特殊透明效果。 */
 #dashboard .dashboard-panel:has(.learning-stats-v42){
   min-height:260px !important;
@@ -6818,9 +6818,9 @@ body.exam-rail-collapsed-v34 #exam-answer-card-v30 .rail-show-btn-v34:hover{
     font-size:25px !important;
   }
 }
-/* SHIROHA_WEB_V42_HOME_STAT_SIMPLE_2X2_END */
+/* MISAKA_WEB_V42_HOME_STAT_SIMPLE_2X2_END */
 
-/* SHIROHA_WEB_V43_HOME_STAT_NUMBER_CENTER_START
+/* MISAKA_WEB_V43_HOME_STAT_NUMBER_CENTER_START
    首页学习统计：数字居中，取消加粗；保持 v42 的 2×2 卡片布局。 */
 #dashboard .learning-stat-tile-v42 b{
   width:100% !important;
@@ -6829,19 +6829,19 @@ body.exam-rail-collapsed-v34 #exam-answer-card-v30 .rail-show-btn-v34:hover{
   font-weight:400 !important;
   letter-spacing:0 !important;
 }
-/* SHIROHA_WEB_V43_HOME_STAT_NUMBER_CENTER_END */
+/* MISAKA_WEB_V43_HOME_STAT_NUMBER_CENTER_END */
 
-/* SHIROHA_WEB_V45_FOCUS_NAV_AND_BANK_EDITOR_START
+/* MISAKA_WEB_V45_FOCUS_NAV_AND_BANK_EDITOR_START
    修复沉浸页展开导航无效；题库操作改为右侧上下对齐；增加题库二次编辑提示条。 */
 @media (min-width:721px){
   body.practice-focus:not(.side-collapsed) .side,
   body.exam-focus:not(.side-collapsed) .side{
     display:block !important;
     position:fixed !important;
-    left:var(--shiroha-side-left,20px) !important;
+    left:var(--misaka-side-left,20px) !important;
     top:18px !important;
     bottom:18px !important;
-    width:var(--shiroha-side-width,188px) !important;
+    width:var(--misaka-side-width,188px) !important;
     height:auto !important;
     transform:none !important;
     opacity:1 !important;
@@ -6963,7 +6963,7 @@ body.exam-rail-collapsed-v34 #exam-answer-card-v30 .rail-show-btn-v34:hover{
     flex-wrap:wrap !important;
   }
 }
-/* SHIROHA_WEB_V45_FOCUS_NAV_AND_BANK_EDITOR_END */
+/* MISAKA_WEB_V45_FOCUS_NAV_AND_BANK_EDITOR_END */
 
 /* v51: import text find / replace */
 .import-actions-v51{
@@ -7085,7 +7085,7 @@ body.exam-rail-collapsed-v34 #exam-answer-card-v30 .rail-show-btn-v34:hover{
   }
 }
 
-/* SHIROHA_WEB_V58_8_BANK_ACTION_NOWRAP_FIX_START */
+/* MISAKA_WEB_V58_8_BANK_ACTION_NOWRAP_FIX_START */
 .bank-card-actions-v33{
   width:86px !important;
   min-width:86px !important;
@@ -7099,9 +7099,9 @@ body.exam-rail-collapsed-v34 #exam-answer-card-v30 .rail-show-btn-v34:hover{
   line-height:1 !important;
   font-size:12px !important;
 }
-/* SHIROHA_WEB_V58_8_BANK_ACTION_NOWRAP_FIX_END */
+/* MISAKA_WEB_V58_8_BANK_ACTION_NOWRAP_FIX_END */
 
-/* SHIROHA_WEB_V58_9_BANK_ACTION_AND_IMAGE_OPTION_FIX_START */
+/* MISAKA_WEB_V58_9_BANK_ACTION_AND_IMAGE_OPTION_FIX_START */
 .bank-card-actions-v33{
   width:92px !important;
   min-width:92px !important;
@@ -7136,9 +7136,9 @@ body.exam-rail-collapsed-v34 #exam-answer-card-v30 .rail-show-btn-v34:hover{
   min-width:auto;
   font-size:18px;
 }
-/* SHIROHA_WEB_V58_9_BANK_ACTION_AND_IMAGE_OPTION_FIX_END */
+/* MISAKA_WEB_V58_9_BANK_ACTION_AND_IMAGE_OPTION_FIX_END */
 
-/* SHIROHA_WEB_V58_9_5_LIMIT_CONTROL_START
+/* MISAKA_WEB_V58_9_5_LIMIT_CONTROL_START
    练习页与错题页题量控制：自定义输入与固定题量保持在同一行，延续卡片内轻量表单布局。 */
 .limit-field-v60{
   min-width:0 !important;
@@ -7184,10 +7184,10 @@ body.exam-rail-collapsed-v34 #exam-answer-card-v30 .rail-show-btn-v34:hover{
     grid-template-columns:minmax(0,1fr) 88px !important;
   }
 }
-/* SHIROHA_WEB_V58_9_5_LIMIT_CONTROL_END */
+/* MISAKA_WEB_V58_9_5_LIMIT_CONTROL_END */
 
 
-/* SHIROHA_WEB_V58_9_6_FAVORITES_HOTKEY_RAIL_START */
+/* MISAKA_WEB_V58_9_6_FAVORITES_HOTKEY_RAIL_START */
 .favorites-card-v596{overflow:hidden;}
 .favorites-hero-v596{
   display:grid;
@@ -7276,9 +7276,9 @@ body.practice-focus.practice-rail-collapsed-v34 #practice-card > .practice-side-
   .favorite-item-v596{grid-template-columns:1fr;align-items:stretch;}
   .favorite-actions-v596{justify-content:flex-start;}
 }
-/* SHIROHA_WEB_V58_9_6_FAVORITES_HOTKEY_RAIL_END */
+/* MISAKA_WEB_V58_9_6_FAVORITES_HOTKEY_RAIL_END */
 
-/* SHIROHA_WEB_V58_9_6_1_PRACTICE_STATS_TOGGLE_TRANSPARENT_FIX_START
+/* MISAKA_WEB_V58_9_6_1_PRACTICE_STATS_TOGGLE_TRANSPARENT_FIX_START
    刷题统计收起按钮对齐右下角人物“显示/隐藏”胶囊：半透明、弱边框、无重阴影。 */
 body.practice-focus.practice-rail-collapsed-v34 #practice-card > .practice-side-v31 #practice-stat-card-v30 > .rail-show-btn-v34{
   width:auto !important;
@@ -7311,7 +7311,7 @@ body.practice-focus.practice-rail-collapsed-v34 #practice-card > .practice-side-
   color:#5676ac !important;
   box-shadow:none !important;
 }
-/* SHIROHA_WEB_V58_9_6_1_PRACTICE_STATS_TOGGLE_TRANSPARENT_FIX_END */
+/* MISAKA_WEB_V58_9_6_1_PRACTICE_STATS_TOGGLE_TRANSPARENT_FIX_END */
 
 /* v58.9.8.1: import preview toolbar alignment */
 .import-preview-head-v5981{
@@ -7404,7 +7404,7 @@ body.practice-focus.practice-rail-collapsed-v34 #practice-card > .practice-side-
 }
 
 
-/* SHIROHA_WEB_V89_16_GROUP_PRACTICE_SCOPE */
+/* MISAKA_WEB_V89_16_GROUP_PRACTICE_SCOPE */
 .practice-scope-summary-v8916,
 .bank-scope-status-v8916{
   display:flex;
@@ -7440,7 +7440,7 @@ body.practice-focus.practice-rail-collapsed-v34 #practice-card > .practice-side-
 .record-source-v8916{display:block;margin-top:4px;color:var(--muted);font-size:.76rem;font-weight:500;}
 
 
-/* SHIROHA_WEB_V58_9_14_MULTI_BLANK_SYNC_START */
+/* MISAKA_WEB_V58_9_14_MULTI_BLANK_SYNC_START */
 #edit-answer-single-wrap-v58914.hidden,
 #edit-multi-blank-wrap-v58914.hidden,
 #edit-enable-multi-blank-btn-v58914.hidden{display:none!important}
@@ -7465,9 +7465,9 @@ body.practice-focus.practice-rail-collapsed-v34 #practice-card > .practice-side-
   .multi-blank-editor-head-v58914,.multi-blank-edit-head-v58914{align-items:stretch;flex-direction:column}
   .multi-blank-comparison-row-v58914{grid-template-columns:1fr;gap:4px}
 }
-/* SHIROHA_WEB_V58_9_14_MULTI_BLANK_SYNC_END */
+/* MISAKA_WEB_V58_9_14_MULTI_BLANK_SYNC_END */
 
-/* SHIROHA_WEB_V58_9_16_PRACTICE_PROGRESS_START
+/* MISAKA_WEB_V58_9_16_PRACTICE_PROGRESS_START
    练习起点与自选题号复用现有第二行，不新增独立配置区。 */
 .practice-start-field-v58916,
 .practice-range-field-v58916{
@@ -7491,4 +7491,4 @@ body.practice-focus.practice-rail-collapsed-v34 #practice-card > .practice-side-
     font-size:14px !important;
   }
 }
-/* SHIROHA_WEB_V58_9_16_PRACTICE_PROGRESS_END */
+/* MISAKA_WEB_V58_9_16_PRACTICE_PROGRESS_END */

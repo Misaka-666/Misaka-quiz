@@ -1,9 +1,9 @@
 (function(){
 const APP_VERSION='V35：分组练习与学习体验优化版';
 const CURRENT_SCHEMA_VERSION=1;
-const KEY='shiroha_quiz_state_v28_4_c1';
+const KEY='misaka_quiz_state_v28_4_c1';
 const LEGACY_KEYS=[];
-const CLEAR_STORAGE_KEYS=['shiroha_quiz_state','uquiz_state_v8_c1'];
+const CLEAR_STORAGE_KEYS=['misaka_quiz_state','uquiz_state_v8_c1'];
 const TYPE_LABEL={single:'单选题',multiple:'多选题',multi:'多选题',judge:'判断题',blank:'填空题',short:'简答题',short_answer:'简答题'};
 const state=loadState();
 let importCache=[];let tableImportResultV49=null;let importWarnings=[];let importReport='';let importDiagnostics=null;let importPreviewFilter='priority';let importSelected=new Set();let bankEditContext=null;let exportBankSelectedV23=new Set();let backupImportModeV23='merge';let practice={items:[],idx:0,answered:0,correct:0,wrong:0,start:0};let exam={items:[],answers:{},start:0,timer:null,deadline:0,submitted:false};
@@ -13,7 +13,7 @@ function init(){upgradeState();ensureDefaultBank();bindNav();bindEvents();bindDa
 function defaultBank(){const qb=window.questionBank||{meta:{title:'空题库'},questions:[]};return {id:'default-c1',name:qb.meta?.title||'默认题库',createdAt:now(),questions:(qb.questions||[]).map(normalizeQuestion)}}
 function ensureDefaultBank(){if(!state.banks.length) state.banks.push(defaultBank()); if(!state.activeBankId) state.activeBankId=state.banks[0]?.id;}
 function blankState(){return {schemaVersion:CURRENT_SCHEMA_VERSION,banks:[],activeBankId:'',wrongBook:{},records:[],settings:{}}}
-function warnDev(message,error){try{console.warn('[Shiroha Quiz]',message,error||'')}catch(_){}}
+function warnDev(message,error){try{console.warn('[Misaka Quiz]',message,error||'')}catch(_){}}
 function loadState(){
   const keys=[KEY,...LEGACY_KEYS];
   for(const key of keys){
@@ -3790,11 +3790,11 @@ function renderRecords(){const list=$('#records-list');let rows=[...state.record
 function exportRecords(){const text=JSON.stringify(state.records||[],null,2);$('#export-output')&&($('#export-output').value=text);download('记录.json',text)}
 function fmt(s){return new Date(s).toLocaleString('zh-CN',{hour12:false})}
 function exportCurrentBank(){const text=JSON.stringify(activeBank(),null,2);$('#export-output').value=text;download(activeBank().name+'.json',text)}
-function exportAll(){const text=JSON.stringify({...state,schemaVersion:CURRENT_SCHEMA_VERSION},null,2);$('#export-output').value=text;download('shiroha_quiz_all_data.json',text)}
+function exportAll(){const text=JSON.stringify({...state,schemaVersion:CURRENT_SCHEMA_VERSION},null,2);$('#export-output').value=text;download('misaka_quiz_all_data.json',text)}
 function download(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json;charset=utf-8'}));a.download=name;a.click();URL.revokeObjectURL(a.href)}
 
 
-/* SHIROHA_V23_DATA_TOOLS_PATCH_START
+/* MISAKA_V23_DATA_TOOLS_PATCH_START
    v23: 题库管理页批量选择导出 + 导入页/设置页备份 JSON 导入恢复
 */
 function setupEnhancedDataToolsV23(){
@@ -3844,7 +3844,7 @@ function ensureSettingsBackupPanelV23(){
   const settingsCard=$('#settings .card');if(!settingsCard)return;
   settingsCard.insertAdjacentHTML('beforeend',`<div id="settings-backup-panel-v23" class="data-tools-v23">
     <h2>备份与恢复</h2>
-    <p class="muted">用于完整备份/恢复本机 localStorage 中的 Shiroha Quiz 数据。手机 WebView 若无法下载文件，可使用“复制全部数据备份文本”。</p>
+    <p class="muted">用于完整备份/恢复本机 localStorage 中的 Misaka Quiz 数据。手机 WebView 若无法下载文件，可使用“复制全部数据备份文本”。</p>
     <div class="form-grid">
       <label>恢复方式<select id="settings-backup-mode-v23"><option value="merge">合并导入：保留当前数据，新增备份中的题库</option><option value="overwrite" selected>覆盖恢复：用备份替换当前本地数据</option></select></label>
       <label>备份范围<input disabled value="全部题库、错题、记录、设置" /></label>
@@ -3889,19 +3889,19 @@ function todayV23(){return new Date().toISOString().slice(0,10)}
 function buildBackupPayloadV23(banks,exportType='selected_banks',includeAll=false){
   const bankIds=new Set((banks||[]).map(b=>b.id));
   const wrongBook={};Object.keys(state.wrongBook||{}).forEach(id=>{if(includeAll||bankIds.has(id))wrongBook[id]=state.wrongBook[id]});
-  return {app:'Shiroha Quiz',schemaVersion:CURRENT_SCHEMA_VERSION,exportType,exportedAt:now(),banks:banks||[],wrongBook,records:includeAll?(state.records||[]):[],settings:includeAll?(state.settings||{}):{},activeBankId:includeAll?state.activeBankId:((banks&&banks[0]&&banks[0].id)||'')};
+  return {app:'Misaka Quiz',schemaVersion:CURRENT_SCHEMA_VERSION,exportType,exportedAt:now(),banks:banks||[],wrongBook,records:includeAll?(state.records||[]):[],settings:includeAll?(state.settings||{}):{},activeBankId:includeAll?state.activeBankId:((banks&&banks[0]&&banks[0].id)||'')};
 }
 function exportSelectedBanksV23(){
   const banks=selectedBanksV23();if(!banks.length){toast('请至少选择一个题库。','warn');return}
   const payload=buildBackupPayloadV23(banks,banks.length===1?'single_bank':'selected_banks',false);
   const text=JSON.stringify(payload,null,2);setBackupPreviewV23(text);
-  const name=banks.length===1?`shiroha-quiz-bank-${cleanFileNameV23(banks[0].name)}-${todayV23()}.json`:`shiroha-quiz-selected-banks-${todayV23()}.json`;
+  const name=banks.length===1?`misaka-quiz-bank-${cleanFileNameV23(banks[0].name)}-${todayV23()}.json`:`misaka-quiz-selected-banks-${todayV23()}.json`;
   download(name,text);toast(`已导出 ${banks.length} 个题库。该 JSON 可在“设置/导出”页的“导入配置 / 备份 JSON”中导入。`,'ok');
 }
 function exportAllBackupV23(){
   const payload=buildBackupPayloadV23(state.banks||[],'all_data',true);
   const text=JSON.stringify(payload,null,2);setBackupPreviewV23(text);
-  download(`shiroha-quiz-all-data-${todayV23()}.json`,text);toast('已生成全部数据备份。手机端若未弹出下载，可复制文本框内容。','ok');
+  download(`misaka-quiz-all-data-${todayV23()}.json`,text);toast('已生成全部数据备份。手机端若未弹出下载，可复制文本框内容。','ok');
 }
 async function copySelectedBanksJsonV23(){
   const banks=selectedBanksV23();if(!banks.length){toast('请至少选择一个题库。','warn');return}
@@ -3940,7 +3940,7 @@ function normalizeBackupPayloadV23(data,fileName){
   if(Array.isArray(data.banks)){banks=data.banks;wrongBook=data.wrongBook||{};records=Array.isArray(data.records)?data.records:[];settings=data.settings||{};activeBankId=data.activeBankId||''}
   else if(Array.isArray(data.questions)){banks=[{id:data.id||('bank_'+Date.now()),name:data.name||cleanFileNameV23(fileName).replace(/\.json$/i,'')||'导入题库',createdAt:data.createdAt||now(),updatedAt:now(),questions:data.questions}]}
   else if(Array.isArray(data)){banks=[{id:'bank_'+Date.now(),name:cleanFileNameV23(fileName).replace(/\.json$/i,'')||'导入题库',createdAt:now(),updatedAt:now(),questions:data}]}
-  else throw new Error('不是 Shiroha Quiz 备份，也不是单题库 JSON');
+  else throw new Error('不是 Misaka Quiz 备份，也不是单题库 JSON');
   banks=banks.map((b,i)=>({id:String(b.id||('bank_import_'+Date.now()+'_'+i)),name:String(b.name||b.title||('导入题库_'+(i+1))),createdAt:b.createdAt||now(),updatedAt:now(),questions:(b.questions||[]).map((q,j)=>normalizeQuestion(q,j)).filter(q=>q.question)})).filter(b=>b.questions.length||b.name);
   return {banks,wrongBook,records,settings,activeBankId};
 }
@@ -3959,10 +3959,10 @@ function mergeBackupBanksV23(normalized){
   });
   state.activeBankId=state.banks[state.banks.length-normalized.banks.length]?.id||state.activeBankId;
 }
-/* SHIROHA_V23_DATA_TOOLS_PATCH_END */
+/* MISAKA_V23_DATA_TOOLS_PATCH_END */
 
 
-/* SHIROHA_V25_2_TO_V28_ENHANCEMENTS_START
+/* MISAKA_V25_2_TO_V28_ENHANCEMENTS_START
    v25.2: 内置题库按需加载
    v26: 刷题体验增强
    v27: 收藏题与错题本补强
@@ -4132,7 +4132,7 @@ function buildBackupPayloadV23(banks,exportType='selected_banks',includeAll=fals
   const bankIds=new Set((banks||[]).map(b=>b.id));
   const wrongBook={};Object.keys(state.wrongBook||{}).forEach(id=>{if(includeAll||bankIds.has(id))wrongBook[id]=state.wrongBook[id]});
   const favorites={};Object.keys(state.favorites||{}).forEach(id=>{if(includeAll||bankIds.has(id))favorites[id]=state.favorites[id]});
-  return {app:'Shiroha Quiz',schemaVersion:CURRENT_SCHEMA_VERSION,exportType,exportedAt:now(),banks:banks||[],wrongBook,favorites,records:includeAll?(state.records||[]):[],settings:includeAll?(state.settings||{}):{},activeBankId:includeAll?state.activeBankId:((banks&&banks[0]&&banks[0].id)||'')};
+  return {app:'Misaka Quiz',schemaVersion:CURRENT_SCHEMA_VERSION,exportType,exportedAt:now(),banks:banks||[],wrongBook,favorites,records:includeAll?(state.records||[]):[],settings:includeAll?(state.settings||{}):{},activeBankId:includeAll?state.activeBankId:((banks&&banks[0]&&banks[0].id)||'')};
 }
 function normalizeBackupPayloadV23(data,fileName){
   if(!data||typeof data!=='object')throw new Error('JSON 根节点不是对象');
@@ -4140,7 +4140,7 @@ function normalizeBackupPayloadV23(data,fileName){
   if(Array.isArray(data.banks)){banks=data.banks;wrongBook=data.wrongBook||{};favorites=data.favorites||{};records=Array.isArray(data.records)?data.records:[];settings=data.settings||{};activeBankId=data.activeBankId||''}
   else if(Array.isArray(data.questions)){banks=[{id:data.id||('bank_'+Date.now()),name:data.name||cleanFileNameV23(fileName).replace(/\.json$/i,'')||'导入题库',createdAt:data.createdAt||now(),updatedAt:now(),questions:data.questions}]}
   else if(Array.isArray(data)){banks=[{id:'bank_'+Date.now(),name:cleanFileNameV23(fileName).replace(/\.json$/i,'')||'导入题库',createdAt:now(),updatedAt:now(),questions:data}]}
-  else throw new Error('不是 Shiroha Quiz 备份，也不是单题库 JSON');
+  else throw new Error('不是 Misaka Quiz 备份，也不是单题库 JSON');
   banks=banks.map((b,i)=>({id:String(b.id||('bank_import_'+Date.now()+'_'+i)),name:String(b.name||b.title||('导入题库_'+(i+1))),createdAt:b.createdAt||now(),updatedAt:now(),questions:(b.questions||[]).map((q,j)=>normalizeQuestion(q,j)).filter(q=>q.question)})).filter(b=>b.questions.length||b.name);
   return {banks,wrongBook,favorites,records,settings,activeBankId};
 }
@@ -4151,8 +4151,8 @@ function mergeBackupBanksV23(normalized){
 }
 function download(name,text){
   const out=$('#export-output');if(out)out.value=text;
-  if(window.ShirohaAndroid&&typeof window.ShirohaAndroid.saveJsonFile==='function'){
-    try{const ok=window.ShirohaAndroid.saveJsonFile(String(name||'shiroha-quiz.json'),String(text||''));if(ok){toast('已调用系统保存文件。若未看到文件，请检查 Downloads 或使用复制备份文本。','ok');return}}catch(e){warnDev('Android 原生保存接口调用失败',e)}
+  if(window.MisakaAndroid&&typeof window.MisakaAndroid.saveJsonFile==='function'){
+    try{const ok=window.MisakaAndroid.saveJsonFile(String(name||'misaka-quiz.json'),String(text||''));if(ok){toast('已调用系统保存文件。若未看到文件，请检查 Downloads 或使用复制备份文本。','ok');return}}catch(e){warnDev('Android 原生保存接口调用失败',e)}
   }
   const a=document.createElement('a');const url=URL.createObjectURL(new Blob([text],{type:'application/json;charset=utf-8'}));a.href=url;a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
@@ -4180,11 +4180,11 @@ function importBackupJsonFileV23(e){
   })();
 }
 
-/* SHIROHA_V25_2_TO_V28_ENHANCEMENTS_END */
+/* MISAKA_V25_2_TO_V28_ENHANCEMENTS_END */
 
 
 
-/* SHIROHA_WEB_V28_2_LAYOUT_AND_IMMERSIVE_FIX_START */
+/* MISAKA_WEB_V28_2_LAYOUT_AND_IMMERSIVE_FIX_START */
 function setupSidebarCollapse(){
   if($('#sidebar-toggle'))return;
   const btn=document.createElement('button');
@@ -4192,7 +4192,7 @@ function setupSidebarCollapse(){
   btn.type='button';
   btn.className='sidebar-toggle';
   document.body.appendChild(btn);
-  const stored=localStorage.getItem('shiroha-sidebar-collapsed')==='1';
+  const stored=localStorage.getItem('misaka-sidebar-collapsed')==='1';
   document.body.classList.toggle('side-collapsed',stored);
   const refresh=()=>{
     const collapsed=document.body.classList.contains('side-collapsed');
@@ -4202,7 +4202,7 @@ function setupSidebarCollapse(){
   };
   btn.onclick=()=>{
     document.body.classList.toggle('side-collapsed');
-    localStorage.setItem('shiroha-sidebar-collapsed',document.body.classList.contains('side-collapsed')?'1':'0');
+    localStorage.setItem('misaka-sidebar-collapsed',document.body.classList.contains('side-collapsed')?'1':'0');
     refresh();
   };
   refresh();
@@ -4328,9 +4328,9 @@ function renderExamResult(rec){
   $('#exam-back-setup').onclick=()=>exitExamFocus();
   exam.items.forEach(q=>markOptions(`#exam-card [data-result-qid="${CSS.escape(q.id)}"]`,q,exam.answers[q.id]||[]));
 }
-/* SHIROHA_WEB_V28_2_LAYOUT_AND_IMMERSIVE_FIX_END */
+/* MISAKA_WEB_V28_2_LAYOUT_AND_IMMERSIVE_FIX_END */
 
-/* SHIROHA_APP_V30_2_MOBILE_IMAGE_VIEWER_START
+/* MISAKA_APP_V30_2_MOBILE_IMAGE_VIEWER_START
    WebView App 图片题移动端显示优化：默认卡片内自适应，点击图片进入大图预览；横向资料图保留横向滚动，避免被压缩到不可读。 */
 function setupQuestionImageViewerV302(){
   if(document.body.dataset.questionImageViewerV302==='1')return;
@@ -4386,10 +4386,10 @@ function setupQuestionImageViewerV302(){
     img.title='点击查看大图';
   },true);
 }
-/* SHIROHA_APP_V30_2_MOBILE_IMAGE_VIEWER_END */
+/* MISAKA_APP_V30_2_MOBILE_IMAGE_VIEWER_END */
 
 
-/* SHIROHA_WEB_JSON_NATIVE_STANDARD_V82_15_START */
+/* MISAKA_WEB_JSON_NATIVE_STANDARD_V82_15_START */
 function nativeTypeForExportV8215(type){
   const t=normalizeType(type||'single')||'single';
   if(t==='multiple'||t==='multi')return'MULTIPLE';
@@ -4518,7 +4518,7 @@ function buildBackupPayloadV23(banks,exportType='selected_banks',includeAll=fals
   const selected=(banks||[]).map(nativeBankForExportV8215);
   const bankIds=new Set((banks||[]).map(b=>b.id));
   const payload={
-    kind:includeAll?'shiroha_quiz_full_backup':'shiroha_quiz_selected_banks',
+    kind:includeAll?'misaka_quiz_full_backup':'misaka_quiz_selected_banks',
     version:2,
     exportedAt:Date.now(),
     activeBankId:includeAll?String(state.activeBankId||''):String((banks&&banks[0]&&banks[0].id)||state.activeBankId||''),
@@ -4533,15 +4533,15 @@ function buildBackupPayloadV23(banks,exportType='selected_banks',includeAll=fals
 function exportBankById(id){
   const b=state.banks.find(x=>x.id===id);if(!b)return;
   const payload=buildBackupPayloadV23([b],'single_bank',false);
-  const text=JSON.stringify(payload,null,2);setBackupPreviewV23(text);download(`shiroha-quiz-bank-${cleanFileNameV23(b.name)}-${todayV23()}.json`,text);
+  const text=JSON.stringify(payload,null,2);setBackupPreviewV23(text);download(`misaka-quiz-bank-${cleanFileNameV23(b.name)}-${todayV23()}.json`,text);
 }
 function exportCurrentBank(){
   const b=activeBank();const payload=buildBackupPayloadV23([b],'single_bank',false);
-  const text=JSON.stringify(payload,null,2);$('#export-output')&&($('#export-output').value=text);download(`shiroha-quiz-bank-${cleanFileNameV23(b.name||'题库')}-${todayV23()}.json`,text);
+  const text=JSON.stringify(payload,null,2);$('#export-output')&&($('#export-output').value=text);download(`misaka-quiz-bank-${cleanFileNameV23(b.name||'题库')}-${todayV23()}.json`,text);
 }
 function exportAll(){
   const payload=buildBackupPayloadV23(state.banks||[],'all_data',true);
-  const text=JSON.stringify(payload,null,2);$('#export-output')&&($('#export-output').value=text);download(`shiroha-quiz-all-data-${todayV23()}.json`,text);
+  const text=JSON.stringify(payload,null,2);$('#export-output')&&($('#export-output').value=text);download(`misaka-quiz-all-data-${todayV23()}.json`,text);
 }
 function extractBanksFromJsonImportV8215(data,fileName){
   if(Array.isArray(data)){
@@ -4592,7 +4592,7 @@ function webRecordsFromNativeV8215(data){
 function normalizeBackupPayloadV23(data,fileName){
   if(!data||typeof data!=='object')throw new Error('JSON 根节点不是对象');
   const rawBanks=extractBanksFromJsonImportV8215(data,fileName);
-  if(!rawBanks.length)throw new Error('不是 Shiroha Quiz 备份，也不是单题库 JSON');
+  if(!rawBanks.length)throw new Error('不是 Misaka Quiz 备份，也不是单题库 JSON');
   const banks=rawBanks.map((b,i)=>({
     id:String(b.id||('bank_import_'+Date.now()+'_'+i)),
     name:String(b.name||b.title||('导入题库_'+(i+1))),
@@ -4637,40 +4637,40 @@ function parseImport(){
     else showNotice('识别失败','没有识别到有效题目。请检查题号、选项或答案格式，也可以先粘贴纯文本后再试。','danger');
   }catch(e){toast('识别失败：'+e.message,'danger','识别失败')}
 }
-/* SHIROHA_WEB_JSON_NATIVE_STANDARD_V82_15_END */
+/* MISAKA_WEB_JSON_NATIVE_STANDARD_V82_15_END */
 
 function resetData(){if(confirm('确定清除全部本地数据？默认题库也会重新初始化。')){clearStoredState();location.reload()}}
 })();
 
 
-/* SHIROHA_WEB_V29_4_STANDARD_TYPE_NUMBER_IMPORT_FIX */
+/* MISAKA_WEB_V29_4_STANDARD_TYPE_NUMBER_IMPORT_FIX */
 
 
-/* SHIROHA_WEB_V29_5_SECTION_CONTEXT_PARSER_FIX */
+/* MISAKA_WEB_V29_5_SECTION_CONTEXT_PARSER_FIX */
 
 
-/* SHIROHA_WEB_V29_6_DOCX_IMAGE_IMPORT_FIX */
+/* MISAKA_WEB_V29_6_DOCX_IMAGE_IMPORT_FIX */
 
 
-/* SHIROHA_WEB_V29_7_DOCX_IMAGE_EXAM_VERIFIED */
+/* MISAKA_WEB_V29_7_DOCX_IMAGE_EXAM_VERIFIED */
 
 
-/* SHIROHA_WEB_V29_8_IMPORT_REVIEW_ANALYSIS_AND_LONG_STEM_FIX */
+/* MISAKA_WEB_V29_8_IMPORT_REVIEW_ANALYSIS_AND_LONG_STEM_FIX */
 
 
-/* SHIROHA_WEB_V29_9_VERIFIED_CUTTING_AND_ANALYSIS_FIX */
+/* MISAKA_WEB_V29_9_VERIFIED_CUTTING_AND_ANALYSIS_FIX */
 
 
-/* SHIROHA_WEB_V29_10_RECRUITMENT_SEGMENT_OPTION_FIX */
+/* MISAKA_WEB_V29_10_RECRUITMENT_SEGMENT_OPTION_FIX */
 
 
-/* SHIROHA_WEB_V29_11_RECRUITMENT_FULL_VERIFY_FIX */
+/* MISAKA_WEB_V29_11_RECRUITMENT_FULL_VERIFY_FIX */
 
 
-/* SHIROHA_WEB_V29_12_SELECTED_HITS_COPY_FIX */
+/* MISAKA_WEB_V29_12_SELECTED_HITS_COPY_FIX */
 
 
-/* SHIROHA_WEB_V29_13_COMPACT_OPTION_SEQUENCE_FIX */
+/* MISAKA_WEB_V29_13_COMPACT_OPTION_SEQUENCE_FIX */
 
 
-/* SHIROHA_WEB_V29_14_LAST_A_OPTION_FALLBACK_FIX */
+/* MISAKA_WEB_V29_14_LAST_A_OPTION_FALLBACK_FIX */
