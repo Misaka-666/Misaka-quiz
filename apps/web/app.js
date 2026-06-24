@@ -1,8 +1,8 @@
 (function(){
 const APP_VERSION='V35：分组练习与学习体验优化版 + AI解析/分析';
-/* SHIROHA_WEB_AI_PATCH_START — AI Prompts */
+/* MISAKA_WEB_AI_PATCH_START — AI Prompts */
 const AI_REVIEW_SYSTEM_PROMPT=`
-你是 Shiroha Quiz 的题库核对助手。你的任务是检查题目识别结果是否存在异常，而不是重新出题。
+你是 Misaka Quiz 的题库核对助手。你的任务是检查题目识别结果是否存在异常，而不是重新出题。
 
 请根据输入的题干、题型、选项、答案、解析，判断是否存在以下问题：
 1. 题型识别错误
@@ -25,7 +25,7 @@ const AI_REVIEW_SYSTEM_PROMPT=`
 `
 
 const AI_ANALYSIS_SYSTEM_PROMPT=`
-你是 Shiroha Quiz 的题目解析助手。你的任务是根据题干、题型、选项和正确答案，生成简洁、准确、适合学习复习的解析或主观题参考作答。
+你是 Misaka Quiz 的题目解析助手。你的任务是根据题干、题型、选项和正确答案，生成简洁、准确、适合学习复习的解析或主观题参考作答。
 
 要求：
 1. 客观题只围绕题干、选项和正确答案解释，不要擅自改变答案
@@ -40,7 +40,7 @@ const AI_ANALYSIS_SYSTEM_PROMPT=`
 `
 
 const AI_SINGLE_QUESTION_ANALYSIS_SYSTEM_PROMPT=`
-你是 Shiroha Quiz 的单题学习分析助手。你的任务是在刷题者已经提交答案或处于背题模式后，对当前题目给出参考分析。
+你是 Misaka Quiz 的单题学习分析助手。你的任务是在刷题者已经提交答案或处于背题模式后，对当前题目给出参考分析。
 
 要求：
 1. 先根据题干、题型和选项独立判断参考答案，再与本地题库答案对照
@@ -53,17 +53,17 @@ const AI_SINGLE_QUESTION_ANALYSIS_SYSTEM_PROMPT=`
 8. 必须原样返回输入里的 questionId
 9. JSON 顶层必须是 {"questionId":"...","suggestedAnswer":"...","matchesLocalAnswer":true,"analysis":"...","confidence":"HIGH / MEDIUM / LOW","needsReview":false,"warning":""}
 `
-/* SHIROHA_WEB_AI_PATCH_END */
+/* MISAKA_WEB_AI_PATCH_END */
 const RICH_CONTENT_VERSION_V57='shiroha-web-rich-v1';
 const BANK_DEFAULT_GROUP_V58='未分组';
 const CURRENT_SCHEMA_VERSION=1;
-const KEY='shiroha_quiz_state_v28_4_c1';
-const LEGACY_KEYS=[];
-const CLEAR_STORAGE_KEYS=['shiroha_quiz_state','uquiz_state_v8_c1'];
+const KEY='misaka_quiz_state_v28_4_c1';
+const LEGACY_KEYS=['shiroha_quiz_state_v28_4_c1'];
+const CLEAR_STORAGE_KEYS=['shiroha_quiz_state','misaka_quiz_state','uquiz_state_v8_c1'];
 const TYPE_LABEL={single:'单选题',multiple:'多选题',multi:'多选题',judge:'判断题',blank:'填空题',short:'简答题',short_answer:'简答题'};
 const state=loadState();
 let importCache=[];let tableImportResultV49=null;let importWarnings=[];let importReport='';let importDiagnostics=null;let importPreviewFilter='priority';let importSelected=new Set();let bankEditSessionV45=null;let exportBankSelectedV23=new Set();let backupImportModeV23='merge';let practice={items:[],idx:0,answered:0,correct:0,wrong:0,start:0};let exam={items:[],answers:{},start:0,timer:null,deadline:0,submitted:false};let editBlankGroupsV58914=[];let editMultiBlankEnabledV58914=false;
-/* SHIROHA_WEB_AI_CLIENT_START */
+/* MISAKA_WEB_AI_CLIENT_START */
 function getAiConfig(){
   const cfg=state.settings&&state.settings.aiConfig||{};
   return {apiBaseUrl:cfg.apiBaseUrl||'',apiKey:cfg.apiKey||'',modelName:cfg.modelName||'deepseek-chat'};
@@ -135,16 +135,16 @@ async function aiTestConnection(){
   const cfg=getAiConfig();
   if(!cfg.apiBaseUrl||!cfg.apiKey||!cfg.modelName)throw new Error('请先填写完整的 AI 配置。');
   const userPayload=JSON.stringify({task:'connection_test'});
-  const raw=await aiRequestChatCompletion('你是 Shiroha Quiz 的接口连通性测试助手，只返回简短确认。',userPayload,30);
+  const raw=await aiRequestChatCompletion('你是 Misaka Quiz 的接口连通性测试助手，只返回简短确认。',userPayload,30);
   return raw?('连接成功：'+raw.slice(0,40)):'连接成功。';
 }
-/* SHIROHA_WEB_AI_CLIENT_END */
+/* MISAKA_WEB_AI_CLIENT_END */
 const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];
 function shouldKeepImportAnalysis(){const el=$('#import-keep-analysis');return el?el.checked:true;}
-function stripImportAnalysis(qs){if(!qs)return qs;let stripped=0;qs.forEach(q=>{if(q.analysis||q.explanation||q.explain){q.analysis='';q.explanation='';q.explain='';if(q._rawAnalysis)q._rawAnalysis='';stripped++}});console.log('[Shiroha Quiz] 已清除 '+stripped+' 道题的解析文本（导入设置：不保留解析）');return qs;}
+function stripImportAnalysis(qs){if(!qs)return qs;let stripped=0;qs.forEach(q=>{if(q.analysis||q.explanation||q.explain){q.analysis='';q.explanation='';q.explain='';if(q._rawAnalysis)q._rawAnalysis='';stripped++}});console.log('[Misaka Quiz] 已清除 '+stripped+' 道题的解析文本（导入设置：不保留解析）');return qs;}
 function ensureDefaultBank(){if(!state.banks.length&&!state.settings?.suppressDefaultBank) state.banks.push(defaultBank()); if(!state.activeBankId) state.activeBankId=state.banks[0]?.id||'';}
 function blankState(){return {schemaVersion:CURRENT_SCHEMA_VERSION,banks:[],activeBankId:'',wrongBook:{},favorites:{},records:[],settings:{},crossPlatformMeta:{favoriteQuestions:{}}}}
-function warnDev(message,error){try{console.warn('[Shiroha Quiz]',message,error||'')}catch(_){}}
+function warnDev(message,error){try{console.warn('[Misaka Quiz]',message,error||'')}catch(_){}}
 function loadState(){
   const keys=[KEY,...LEGACY_KEYS];
   for(const key of keys){
@@ -6256,19 +6256,19 @@ function todayV23(){return new Date().toISOString().slice(0,10)}
 function buildQuestionBanksExportPayloadV598(banks){
   const exported=(banks||[]).map(serializeBankForCrossExportV53);
   if(exported.length===1)return exported[0];
-  return {app:'Shiroha Quiz',appVersion:APP_VERSION,schemaVersion:CURRENT_SCHEMA_VERSION,richContentVersion:RICH_CONTENT_VERSION_V57,richContentCapabilities:buildRichContentCapabilitiesV57(exported),exportType:'question_banks',exportedAt:now(),banks:exported,activeBankId:exported.some(b=>b.id===state.activeBankId)?state.activeBankId:(exported[0]?.id||'')};
+  return {app:'Misaka Quiz',appVersion:APP_VERSION,schemaVersion:CURRENT_SCHEMA_VERSION,richContentVersion:RICH_CONTENT_VERSION_V57,richContentCapabilities:buildRichContentCapabilitiesV57(exported),exportType:'question_banks',exportedAt:now(),banks:exported,activeBankId:exported.some(b=>b.id===state.activeBankId)?state.activeBankId:(exported[0]?.id||'')};
 }
 function exportSelectedBanksV23(){
   const banks=selectedBanksV23();if(!banks.length){toast('请至少选择一个题库。','warn');return}
   const payload=buildQuestionBanksExportPayloadV598(banks);
   const text=JSON.stringify(payload,null,2);setBackupPreviewV23(text);
-  const name=banks.length===1?`shiroha-quiz-bank-${cleanFileNameV23(banks[0].name)}-${todayV23()}.json`:`shiroha-quiz-question-banks-${todayV23()}.json`;
+  const name=banks.length===1?`misaka-quiz-bank-${cleanFileNameV23(banks[0].name)}-${todayV23()}.json`:`misaka-quiz-question-banks-${todayV23()}.json`;
   download(name,text);toast(`已导出 ${banks.length} 个题库 JSON。题库管理页导出的 JSON 只包含题库内容，不包含错题、收藏、记录和设置。`,'ok');
 }
 function exportAllBackupV23(){
   const payload=buildBackupPayloadV23(state.banks||[],'all_data',true);
   const text=JSON.stringify(payload,null,2);setBackupPreviewV23(text);
-  download(`shiroha-quiz-all-data-${todayV23()}.json`,text);toast('已生成全部数据备份。手机端若未弹出下载，可复制文本框内容。','ok');
+  download(`misaka-quiz-all-data-${todayV23()}.json`,text);toast('已生成全部数据备份。手机端若未弹出下载，可复制文本框内容。','ok');
 }
 async function copySelectedBanksJsonV23(){
   const banks=selectedBanksV23();if(!banks.length){toast('请至少选择一个题库。','warn');return}
@@ -6296,7 +6296,7 @@ function syncHomeVersionPromptV586(){
   const label=APP_VERSION;
   try{
     const root=document.querySelector('#dashboard')||document.body||document;
-    document.title=`Shiroha Quiz - ${label}`;
+    document.title=`Misaka Quiz - ${label}`;
     const homeVersionLabel=document.querySelector('#home-version-label');
     if(homeVersionLabel)homeVersionLabel.textContent=label;
     const nodes=[...root.querySelectorAll('h1,h2,h3,h4,b,strong,span,p,div')];
@@ -6600,8 +6600,8 @@ function buildBackupPayloadV23(banks,exportType='selected_banks',includeAll=fals
   const webSettings=includeAll?(state.settings||{}):{};
   const crossPlatform=includeAll?buildNativeInteropStateV24(exportedBanks):null;
   const payload={
-    app:'Shiroha Quiz',
-    kind:includeAll?'shiroha_quiz_web_full_backup':'shiroha_quiz_selected_banks',
+    app:'Misaka Quiz',
+    kind:includeAll?'misaka_quiz_web_full_backup':'misaka_quiz_selected_banks',
     appVersion:APP_VERSION,
     schemaVersion:CURRENT_SCHEMA_VERSION,
     crossPlatformSchemaVersion:1,
@@ -6693,7 +6693,7 @@ function normalizeBackupPayloadV23(data,fileName){
     banks=[{id:data.id||makeId('bank'),name:data.name||cleanFileNameV23(fileName).replace(/\.(?:json|zip)$/i,'')||'导入题库',groupName:pickBankGroupNameFromJsonV58(data),createdAt:data.createdAt||now(),updatedAt:now(),questions:data.questions}];
   }else if(Array.isArray(data)){
     banks=[{id:makeId('bank'),name:cleanFileNameV23(fileName).replace(/\.(?:json|zip)$/i,'')||'导入题库',createdAt:now(),updatedAt:now(),questions:data}];
-  }else throw new Error(nativeLike?'备份中没有 banks[] 题库数据':'不是 Shiroha Quiz 备份，也不是单题库 JSON');
+  }else throw new Error(nativeLike?'备份中没有 banks[] 题库数据':'不是 Misaka Quiz 备份，也不是单题库 JSON');
   banks=banks.map((b,i)=>({id:String(b.id||makeId('bank_import',i)),name:String(b.name||b.title||('导入题库_'+(i+1))),groupName:pickBankGroupNameFromJsonV58(b),createdAt:b.createdAt||now(),updatedAt:now(),questions:(b.questions||[]).map((q,j)=>normalizeQuestion(q,j)).filter(q=>q.question)})).filter(b=>b.questions.length||b.name);
   if(!banks.some(b=>b.id===activeBankId))activeBankId=banks[0]?.id||'';
   return {banks,wrongBook,favorites,records,settings,hasWebSettings,crossPlatformMeta,activeBankId};
@@ -6752,7 +6752,7 @@ function mergeBackupBanksV23(normalized){
 function download(name,text){
   const out=$('#export-output');if(out)out.value=text;
   if(window.ShirohaAndroid&&typeof window.ShirohaAndroid.saveJsonFile==='function'){
-    try{const ok=window.ShirohaAndroid.saveJsonFile(String(name||'shiroha-quiz.json'),String(text||''));if(ok){toast('已调用系统保存文件。若未看到文件，请检查 Downloads 或使用复制备份文本。','ok');return}}catch(e){warnDev('Android 原生保存接口调用失败',e)}
+    try{const ok=window.ShirohaAndroid.saveJsonFile(String(name||'misaka-quiz.json'),String(text||''));if(ok){toast('已调用系统保存文件。若未看到文件，请检查 Downloads 或使用复制备份文本。','ok');return}}catch(e){warnDev('Android 原生保存接口调用失败',e)}
   }
   const a=document.createElement('a');const url=URL.createObjectURL(new Blob([text],{type:'application/json;charset=utf-8'}));a.href=url;a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
@@ -6817,7 +6817,7 @@ function refreshSidebarToggleV47(){
 }
 function setSidebarCollapsedV47(collapsed,persist=false){
   document.body.classList.toggle('side-collapsed',!!collapsed);
-  if(persist)localStorage.setItem('shiroha-sidebar-collapsed',document.body.classList.contains('side-collapsed')?'1':'0');
+  if(persist)localStorage.setItem('misaka-sidebar-collapsed',document.body.classList.contains('side-collapsed')?'1':'0');
   refreshSidebarToggleV47();
 }
 function autoCollapseSidebarForFocusV47(){
@@ -6844,7 +6844,8 @@ function setupSidebarCollapse(){
   btn.type='button';
   btn.className='sidebar-toggle';
   document.body.appendChild(btn);
-  const stored=localStorage.getItem('shiroha-sidebar-collapsed')==='1';
+  const stored=localStorage.getItem('misaka-sidebar-collapsed')==='1'||localStorage.getItem('shiroha-sidebar-collapsed')==='1';
+  if(localStorage.getItem('shiroha-sidebar-collapsed')!==null){localStorage.setItem('misaka-sidebar-collapsed',stored?'1':'0');localStorage.removeItem('shiroha-sidebar-collapsed')}
   setSidebarCollapsedV47(stored,false);
   btn.onclick=()=>{
     delete document.body.dataset.focusAutoCollapsedV47;
