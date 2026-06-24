@@ -141,7 +141,7 @@ async function aiTestConnection(){
 /* SHIROHA_WEB_AI_CLIENT_END */
 const $=s=>document.querySelector(s);const $$=s=>[...document.querySelectorAll(s)];
 function shouldKeepImportAnalysis(){const el=$('#import-keep-analysis');return el?el.checked:true;}
-function stripImportAnalysis(qs){if(!qs)return qs;qs.forEach(q=>{q.analysis=''});return qs;}
+function stripImportAnalysis(qs){if(!qs)return qs;let stripped=0;qs.forEach(q=>{if(q.analysis||q.explanation||q.explain){q.analysis='';q.explanation='';q.explain='';if(q._rawAnalysis)q._rawAnalysis='';stripped++}});console.log('[Shiroha Quiz] 已清除 '+stripped+' 道题的解析文本（导入设置：不保留解析）');return qs;}
 function ensureDefaultBank(){if(!state.banks.length&&!state.settings?.suppressDefaultBank) state.banks.push(defaultBank()); if(!state.activeBankId) state.activeBankId=state.banks[0]?.id||'';}
 function blankState(){return {schemaVersion:CURRENT_SCHEMA_VERSION,banks:[],activeBankId:'',wrongBook:{},favorites:{},records:[],settings:{},crossPlatformMeta:{favoriteQuestions:{}}}}
 function warnDev(message,error){try{console.warn('[Shiroha Quiz]',message,error||'')}catch(_){}}
