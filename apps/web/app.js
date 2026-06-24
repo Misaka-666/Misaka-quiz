@@ -1409,7 +1409,7 @@ const ZIP_MAX_ENTRY_UNCOMPRESSED_V33=80*1024*1024;
 const ZIP_MAX_TOTAL_UNCOMPRESSED_V33=160*1024*1024;
 function isSafeZipEntryNameV33(name){
   name=String(name||'').trim();
-  if(!name||name.includes('\0')||name.includes('\\')||name.startsWith('/')||name.startsWith('./')||/^[A-Za-z]:/.test(name))return false;
+  if(!name||name.includes('\0')||name.startsWith('/')||name.startsWith('./')||/^[A-Za-z]:/.test(name))return false;
   return name.split('/').every(part=>part&&part!=='.'&&part!=='..');
 }
 function assertZipEntrySafeV33(e,bufLength){
@@ -1429,7 +1429,7 @@ function parseZipEntries(buf){
     if(view.getUint32(off,true)!==0x02014b50)break;
     const method=view.getUint16(off+10,true),compSize=view.getUint32(off+20,true),uncompSize=view.getUint32(off+24,true),nameLen=view.getUint16(off+28,true),extraLen=view.getUint16(off+30,true),commentLen=view.getUint16(off+32,true),localOffset=view.getUint32(off+42,true);
     if(off+46+nameLen+extraLen+commentLen>bytes.length)throw new Error('ZIP central directory entry is truncated.');
-    const name=utf8(bytes.slice(off+46,off+46+nameLen));
+    const name=utf8(bytes.slice(off+46,off+46+nameLen)).replace(/\\/g,'/');
     const entry={name,method,compSize,uncompSize,localOffset};
     assertZipEntrySafeV33(entry,bytes.length);
     totalUncompressed+=uncompSize;
