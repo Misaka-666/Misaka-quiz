@@ -1413,9 +1413,9 @@ function isSafeZipEntryNameV33(name){
   return name.split('/').every(part=>part&&part!=='.'&&part!=='..');
 }
 function assertZipEntrySafeV33(e,bufLength){
-  if(!e||!isSafeZipEntryNameV33(e.name))throw new Error('ZIP entry name is unsafe.');
-  if(e.compSize>ZIP_MAX_ENTRY_COMPRESSED_V33||e.uncompSize>ZIP_MAX_ENTRY_UNCOMPRESSED_V33)throw new Error('ZIP entry is too large.');
-  if(e.localOffset<0||e.localOffset>=bufLength)throw new Error('ZIP entry offset is invalid.');
+  if(!e||!isSafeZipEntryNameV33(e.name))throw new Error(`ZIP 条目路径不安全：${esc(String(e&&e.name||'').slice(0,80)||'(空)')}`);
+  if(e.compSize>ZIP_MAX_ENTRY_COMPRESSED_V33||e.uncompSize>ZIP_MAX_ENTRY_UNCOMPRESSED_V33)throw new Error('ZIP 条目过大');
+  if(e.localOffset<0||e.localOffset>=bufLength)throw new Error('ZIP 条目偏移无效');
 }
 function parseZipEntries(buf){
   const view=new DataView(buf);const bytes=new Uint8Array(buf);
