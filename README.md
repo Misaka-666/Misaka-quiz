@@ -3,20 +3,20 @@
 > [!NOTE]
 > 最近空闲时间沉迷「黑夜君临」，更新不会很勤快（）祝大家刷题顺利~
 
-<img src="assets/promo4.jpg" width="800" alt="Shiroha Quiz">
+<img src="assets/promo4.jpg" width="800" alt="Misaka Quiz">
 </div>
 
 <br>
 
-# Shiroha Quiz
+# Misaka Quiz
 
 <img src="assets/shiroha_quiz_ui_assets_v2_cutout/illus_me_settings.webp" width="160" align="right" alt="看板娘" />
 
-Shiroha Quiz 一个轻量、开源的刷题工具，支持自导入题库、练习、考试、与多端使用。
+Misaka Quiz 一个轻量、开源的刷题工具，支持自导入题库、练习、考试、与多端使用。
 
-Shiroha Quiz 解决一个很实际的问题：
+Misaka Quiz 解决一个很实际的问题：
 
-> 你手里有题库——Word、Excel、TXT、JSON，或者题目和答案分开的文件。但格式不统一，整理成本高，即使整理完了也只能翻看，没法真正做题。Shiroha Quiz 把它们自动识别导入，变成可练习、可考试、可错题复盘的个人题库。文字层 PDF 作为辅助支持，扫描件 / 图片型 PDF 暂不作为主要推荐格式。
+> 你手里有题库——Word、Excel、TXT、JSON，或者题目和答案分开的文件。但格式不统一，整理成本高，即使整理完了也只能翻看，没法真正做题。Misaka Quiz 把它们自动识别导入，变成可练习、可考试、可错题复盘的个人题库。文字层 PDF 作为辅助支持，扫描件 / 图片型 PDF 暂不作为主要推荐格式。
 
 当前项目主要包含两条公开使用线：
 
@@ -140,7 +140,7 @@ Shiroha Quiz 解决一个很实际的问题：
 
 - 平板侧边导航：宽屏时底部导航自动切换为左侧导航，外观设置中可开关
 - 暗夜模式 / 浅色模式切换，偏好会持久化保存
-- Shiroha 模式：统一管控开屏图、页面插画和应用图标，可在更通用的场景下关闭角色元素
+- Misaka 模式：统一管控开屏图、页面插画和应用图标，可在更通用的场景下关闭角色元素
 - 二级页面支持系统侧边返回映射，减少误退到桌面的情况
 - 阅读显示偏好可调：题干/选项字号独立控制，支持紧凑选项模式
 - 统一的 Design Token 间距与颜色系统，卡片、按钮、底部导航保持一致质感
@@ -172,7 +172,7 @@ Android 工程通过 `productFlavors` 保留历史 WebView 壳与当前原生版
 
 ### Web 端快速上手
 
-1. 打开 `apps/web/index.html`，或访问 [在线版](https://reiqr.github.io/shiroha-quiz)。
+1. 打开 `apps/web/index.html`，或访问 [在线版](https://reiqr.github.io/misaka-quiz)。
 2. 进入 **导入题库**，粘贴文本或上传文件。
 3. 系统自动识别题型、选项、答案和解析。
 4. 在识别预览中确认题目无误。
@@ -192,13 +192,13 @@ Android 工程通过 `productFlavors` 保留历史 WebView 壳与当前原生版
 
 ### 数据备份建议
 
-Shiroha Quiz 的题库和记录保存在本地存储中（Web 端使用浏览器 LocalStorage，原生版使用 SharedPreferences）。
+Misaka Quiz 的题库和记录保存在本地存储中（Web 端使用浏览器 LocalStorage，原生版使用 SharedPreferences）。
 
 建议：
 
 - **重要题库导入后，及时导出全部数据备份。**
 - **换设备、清理缓存、卸载 App 前，务必先导出备份 JSON 或 ZIP。**
-- **从 Shiroha Quiz 导出的备份 JSON/ZIP，应在设置/导出 → 导入配置 / 备份 JSON/ZIP 中导入。**
+- **从 Misaka Quiz 导出的备份 JSON/ZIP，应在设置/导出 → 导入配置 / 备份 JSON/ZIP 中导入。**
 - **Web 端导出的 JSON 可直接导入原生端；原生端导出的 ZIP 也可导入 Web 端，含图片题库完全互通。**
 - 原生端会兼容题型大小写差异和图片字段差异，减少跨端导入时的题型丢失与 base64 文本外露。
 - **备份 JSON、批量题库 JSON 不要放进普通题库导入区解析。**
@@ -211,19 +211,19 @@ Shiroha Quiz 的题库和记录保存在本地存储中（Web 端使用浏览器
 
 详细说明：
 
-- [所有支持的题库导入格式](docs/题库导入格式支持说明/Shiroha_Quiz_题库导入格式支持说明.md)
-- [题库导入策略与使用指南](docs/题库导入策略与使用指南/Shiroha%20Quiz%20题库导入策略与使用指南.md)
-- [题目导入解析方法说明](docs/题目导入解析方法说明/Shiroha%20Quiz%20题目导入解析方法说明.md)
+- [所有支持的题库导入格式](docs/题库导入格式支持说明/Misaka_Quiz_题库导入格式支持说明.md)
+- [题库导入策略与使用指南](docs/题库导入策略与使用指南/Misaka%20Quiz%20题库导入策略与使用指南.md)
+- [题目导入解析方法说明](docs/题目导入解析方法说明/Misaka%20Quiz%20题目导入解析方法说明.md)
 - 标准题库格式示例：[Markdown](docs/标准题库格式示例/标准题库格式示例.md) / [Word](docs/标准题库格式示例/标准题库格式示例.docx) / [PDF](docs/标准题库格式示例/标准题库格式示例.pdf)
 
-如果原题库格式非常混乱，可以先做一次格式清洗再导入。国内用户可优先使用 DeepSeek、GLM / 智谱清言等工具辅助整理；如果可以稳定使用海外模型，也推荐 ChatGPT、Claude。**请注意：隐私风险主要来自”把题库上传到外部 AI 工具清洗”，不是 Shiroha Quiz 本地导入本身。** 清洗目标只是统一题号、选项、答案和解析格式，不能改题意、不能编造答案，无法确认的答案应标为”待确认”。
+如果原题库格式非常混乱，可以先做一次格式清洗再导入。国内用户可优先使用 DeepSeek、GLM / 智谱清言等工具辅助整理；如果可以稳定使用海外模型，也推荐 ChatGPT、Claude。**请注意：隐私风险主要来自”把题库上传到外部 AI 工具清洗”，不是 Misaka Quiz 本地导入本身。** 清洗目标只是统一题号、选项、答案和解析格式，不能改题意、不能编造答案，无法确认的答案应标为”待确认”。
 
 ---
 
 ## 仓库结构
 
 ```text
-shiroha-quiz/
+misaka-quiz/
 ├── .github/                         # Issue 模板与 GitHub Actions
 ├── apps/
 │   ├── web/                         # Web 版
@@ -296,7 +296,7 @@ npx serve apps/web
 在线版：
 
 ```text
-https://reiqr.github.io/shiroha-quiz
+https://reiqr.github.io/misaka-quiz
 ```
 
 ### Android 端
@@ -361,10 +361,10 @@ cd test\native-parser-regression
 
 下载入口：
 
-- [GitHub Releases](https://github.com/reiqr/shiroha-quiz/releases)
-- [在线体验](https://reiqr.github.io/shiroha-quiz)
+- [GitHub Releases](https://github.com/reiqr/misaka-quiz/releases)
+- [在线体验](https://reiqr.github.io/misaka-quiz)
 
-最新版本请以 [GitHub Releases](https://github.com/reiqr/shiroha-quiz/releases) 为准。当前仓库文档记录的主要版本线为：
+最新版本请以 [GitHub Releases](https://github.com/reiqr/misaka-quiz/releases) 为准。当前仓库文档记录的主要版本线为：
 
 - 统一发布版：**v2.6.3-beta**
 - Web 版：**v0.7.5-alpha**
@@ -380,7 +380,7 @@ cd test\native-parser-regression
 
 ## 开发计划
 
-历史开发计划已归档至 `docs/archive/`，当前功能状态以本 README、[CHANGELOG](./CHANGELOG.md)、[GitHub Releases](https://github.com/reiqr/shiroha-quiz/releases) 和 [原生 Android 开发进度](docs/native/原生开发进度.md) 为准。
+历史开发计划已归档至 `docs/archive/`，当前功能状态以本 README、[CHANGELOG](./CHANGELOG.md)、[GitHub Releases](https://github.com/reiqr/misaka-quiz/releases) 和 [原生 Android 开发进度](docs/native/原生开发进度.md) 为准。
 
 开发与维护文档入口：
 
@@ -393,7 +393,7 @@ cd test\native-parser-regression
 
 ## 参与贡献 / 提交反馈
 
-欢迎通过 [Issue](https://github.com/reiqr/shiroha-quiz/issues/new/choose) 提交，仓库提供了 **Bug 报告** 和 **功能建议** 两种模板：
+欢迎通过 [Issue](https://github.com/reiqr/misaka-quiz/issues/new/choose) 提交，仓库提供了 **Bug 报告** 和 **功能建议** 两种模板：
 
 - Bug 反馈
 - 题库格式兼容问题
