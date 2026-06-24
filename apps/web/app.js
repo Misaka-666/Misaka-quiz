@@ -1429,7 +1429,7 @@ function parseZipEntries(buf){
     if(view.getUint32(off,true)!==0x02014b50)break;
     const method=view.getUint16(off+10,true),compSize=view.getUint32(off+20,true),uncompSize=view.getUint32(off+24,true),nameLen=view.getUint16(off+28,true),extraLen=view.getUint16(off+30,true),commentLen=view.getUint16(off+32,true),localOffset=view.getUint32(off+42,true);
     if(off+46+nameLen+extraLen+commentLen>bytes.length)throw new Error('ZIP central directory entry is truncated.');
-    const name=utf8(bytes.slice(off+46,off+46+nameLen)).replace(/\\/g,'/');
+    const name=decodeZipName(bytes.slice(off+46,off+46+nameLen));
     const entry={name,method,compSize,uncompSize,localOffset};
     assertZipEntrySafeV33(entry,bytes.length);
     totalUncompressed+=uncompSize;
@@ -1504,6 +1504,13 @@ function bytesToBase64(bytes){
   return btoa(bin);
 }
 function utf8(u8){return new TextDecoder('utf-8').decode(u8)}
+function decodeZipName(u8){
+  const utf8Name=utf8(u8).replace(/\\/g,'/').trim();
+  if(!utf8Name||utf8Name.includes('\uFFFD')){
+    try{const gbkName=new TextDecoder('gbk').decode(u8).replace(/\\/g,'/').trim();if(gbkName&&!gbkName.includes('\uFFFD'))return gbkName}catch(e){}
+  }
+  return utf8Name;
+}
 function docxXmlToText(xml,imageMap={}){
   // v54 / 内部 v30：DOCX 富文本块识别。
   // 从“全局抽段落”调整为按 document body 顺序识别段落、表格、图片和 OMML 公式，
