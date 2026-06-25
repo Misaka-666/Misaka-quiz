@@ -2,7 +2,7 @@
 
 ## 文档目的
 
-这份文档用于统一 `Shiroha Quiz` 安卓原生版本的设计基础参数，避免后续页面边做边改、每页风格不一致。
+这份文档用于统一 `Misaka Quiz` 安卓原生版本的设计基础参数，避免后续页面边做边改、每页风格不一致。
 
 它覆盖：
 
@@ -380,8 +380,8 @@
 
 建议直接映射成这些基础组件：
 
-- `ShirohaScaffold`
-- `ShirohaHeader`
+- `MisakaScaffold`
+- `MisakaHeader`
 - `GlassCard`
 - `MetricCard`
 - `ActionPillButton`

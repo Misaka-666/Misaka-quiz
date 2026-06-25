@@ -23,12 +23,12 @@ sourceSets {
         kotlin {
             srcDirs = [
                 'src/main/kotlin',
-                '../../../apps/android/app/src/native/java/com/yiqiu/shirohaquiz/importer/model',
-                '../../../apps/android/app/src/native/java/com/yiqiu/shirohaquiz/importer/parser',
-                '../../../apps/android/app/src/native/java/com/yiqiu/shirohaquiz/importer/score',
-                '../../../apps/android/app/src/native/java/com/yiqiu/shirohaquiz/importer/validate',
-                '../../../apps/android/app/src/native/java/com/yiqiu/shirohaquiz/importer/assets',
-                '../../../apps/android/app/src/native/java/com/yiqiu/shirohaquiz/util'
+                '../../../apps/android/app/src/native/java/com/yiqiu/misakaquiz/importer/model',
+                '../../../apps/android/app/src/native/java/com/yiqiu/misakaquiz/importer/parser',
+                '../../../apps/android/app/src/native/java/com/yiqiu/misakaquiz/importer/score',
+                '../../../apps/android/app/src/native/java/com/yiqiu/misakaquiz/importer/validate',
+                '../../../apps/android/app/src/native/java/com/yiqiu/misakaquiz/importer/assets',
+                '../../../apps/android/app/src/native/java/com/yiqiu/misakaquiz/util'
             ]
             exclude '**/QuestionImportAssetExtractor.kt', '**/QuestionImageBinder.kt', '**/LauncherIconSwitcher.kt'
         }

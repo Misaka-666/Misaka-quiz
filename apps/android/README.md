@@ -1,4 +1,4 @@
-# Shiroha Quiz — Android 工程
+# Misaka Quiz — Android 工程
 
 ## 双入口架构
 
@@ -16,7 +16,7 @@ bash ./gradlew assembleWebDebug      # Web 壳子
 bash ./gradlew assembleNativeDebug   # 原生 Compose
 ```
 
-APK 输出：`app/build/outputs/shiroha-quiz/`
+APK 输出：`app/build/outputs/apk/native/debug/` (debug) 或 `app/build/outputs/apk/native/release/` (release)
 
 ## 原生 Compose 进度
 

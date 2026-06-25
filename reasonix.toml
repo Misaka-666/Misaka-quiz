@@ -1,0 +1,2 @@
+[permissions]
+allow = ["Bash(cd \"D:/Reasonix/Misaka-quiz\" && git remote set-url origin https://github.com/reiqr/shiroha-quiz.git && git -c http.proxy=\"\" -c https.proxy=\"\" push origin master 2>&1)", "Bash(cd apps/android && grep -r -i -l \"shiroha\" --include=\"*.kt\" --include=\"*.kts\" --include=\"*.xml\" --include=\"*.properties\" --include=\"*.pro\" --include=\"*.gradle\" . 2>/dev/null | head -40)"]

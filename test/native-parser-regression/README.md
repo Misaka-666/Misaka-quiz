@@ -1,4 +1,4 @@
-# Shiroha Quiz 原生解析器外部回归核对包
+# Misaka Quiz 原生解析器外部回归核对包
 
 这个目录用于核对 Android 原生解析器稳定性，不改 App 源码、不改现有单元测试。它直接调用当前仓库里的原生解析器源码，把 `samples/` 的输入解析成 `actual/`，再和 `expected/` 对比。
 
@@ -85,14 +85,14 @@ Runner 不再在 `RegressionRunner.kt` 里硬编码用例列表。新增、删�
 
 Gradle 路径解析顺序：
 
-1. 优先使用环境变量 `SHIROHA_GRADLE` 指向的 `gradle.bat`。
+1. 优先使用环境变量 `MISAKA_GRADLE` 指向的 `gradle.bat`。
 2. 其次使用本机常用路径 `E:\codex\exercise\output\gradle-8.7\bin\gradle.bat`。
 3. 最后回退到仓库内 `apps/android/gradlew.bat`。
 
 如果你的 Gradle 不在上述路径，可以临时指定：
 
 ```powershell
-$env:SHIROHA_GRADLE = 'E:\your\gradle\bin\gradle.bat'
+$env:MISAKA_GRADLE = 'E:\your\gradle\bin\gradle.bat'
 .\run-external-regression.ps1
 ```
 

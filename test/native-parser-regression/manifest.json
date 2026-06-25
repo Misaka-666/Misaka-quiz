@@ -1,5 +1,5 @@
 {
-  "app": "Shiroha Quiz",
+  "app": "Misaka Quiz",
   "scope": "native-parser-regression",
   "version": 5,
   "note": "外部回归核对包 v5：新增内嵌多空结构识别、填空题分区继承，以及版本/参数/说明性括号和中等置信候选保护。Runner 以本 manifest 为唯一用例清单。",

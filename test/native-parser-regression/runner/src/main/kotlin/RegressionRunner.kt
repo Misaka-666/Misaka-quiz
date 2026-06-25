@@ -1,7 +1,7 @@
-import com.yiqiu.shirohaquiz.importer.model.ImportResult
-import com.yiqiu.shirohaquiz.importer.model.Question
-import com.yiqiu.shirohaquiz.importer.model.WarningLevel
-import com.yiqiu.shirohaquiz.importer.parser.QuizImportParser
+import com.yiqiu.misakaquiz.importer.model.ImportResult
+import com.yiqiu.misakaquiz.importer.model.Question
+import com.yiqiu.misakaquiz.importer.model.WarningLevel
+import com.yiqiu.misakaquiz.importer.parser.QuizImportParser
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.createDirectories

@@ -163,8 +163,8 @@ Android 工程通过 `productFlavors` 保留历史 WebView 壳与当前原生版
 
 | Flavor | 包名 | 技术路线 |
 |---|---|---|
-| `web` | `com.yiqiu.shirohaquiz` | WebView 加载本地 Web 资源 |
-| `native` | `com.reqir.shirohaquiz` | Kotlin + Jetpack Compose + Material3 |
+| `web` | `com.yiqiu.misakaquiz` | WebView 加载本地 Web 资源 |
+| `native` | `com.reqir.misakaquiz` | Kotlin + Jetpack Compose + Material3 |
 
 ---
 

@@ -3,4 +3,5 @@ build/
 local.properties
 captures/
 app/build/
+releases/*.apk
 

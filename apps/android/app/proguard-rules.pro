@@ -12,8 +12,8 @@
 -keep class * extends androidx.navigation.NavArgs { *; }
 
 # App namespace — keep data models that may be serialized
--keep class com.yiqiu.shirohaquiz.state.** { <fields>; }
--keep class com.reqir.shirohaquiz.state.** { <fields>; }
+-keep class com.yiqiu.misakaquiz.state.** { <fields>; }
+-keep class com.reqir.misakaquiz.state.** { <fields>; }
 
 # Keep Serializable/Parcelable used by navigation
 -keepclassmembers class * implements java.io.Serializable { *; }

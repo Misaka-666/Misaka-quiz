@@ -23,7 +23,7 @@ assignees: ""
 ## 使用环境
 
 - 系统：
-- Shiroha Quiz 版本号：
+- Misaka Quiz 版本号：
 - 设备型号：
 - Android 系统版本（仅原生 Android App 需要）：
 - 浏览器版本（仅 Web 版需要）：

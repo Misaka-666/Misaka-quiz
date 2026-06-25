@@ -5,8 +5,8 @@ $RepoRoot = Resolve-Path (Join-Path $RegressionDir '..\..')
 $ActualDir = Join-Path $RegressionDir 'actual'
 
 function Resolve-GradleCommand {
-    if ($env:SHIROHA_GRADLE -and (Test-Path $env:SHIROHA_GRADLE)) {
-        return (Resolve-Path $env:SHIROHA_GRADLE).Path
+    if ($env:MISAKA_GRADLE -and (Test-Path $env:MISAKA_GRADLE)) {
+        return (Resolve-Path $env:MISAKA_GRADLE).Path
     }
 
     $WorkspaceGradle = Join-Path $RepoRoot '..\output\gradle-8.7\bin\gradle.bat'
@@ -19,7 +19,7 @@ function Resolve-GradleCommand {
         return (Resolve-Path $ProjectGradlew).Path
     }
 
-    throw '未找到 Gradle。请确认 E:\codex\exercise\output\gradle-8.7\bin\gradle.bat 或 apps/android/gradlew.bat 存在，或设置环境变量 SHIROHA_GRADLE。'
+    throw '未找到 Gradle。请确认 E:\codex\exercise\output\gradle-8.7\bin\gradle.bat 或 apps/android/gradlew.bat 存在，或设置环境变量 MISAKA_GRADLE。'
 }
 
 function Invoke-CheckedCommand {

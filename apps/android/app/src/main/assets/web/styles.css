@@ -1426,37 +1426,37 @@ textarea,input,select,button{
   animation-delay:.3s
 }
 .hero-mascot-main{
-  animation:shirohaBreathe 4.8s ease-in-out infinite
+  animation:misakaBreathe 4.8s ease-in-out infinite
 }
 .import-art-main{
-  animation:shirohaFloat 4.2s ease-in-out infinite
+  animation:misakaFloat 4.2s ease-in-out infinite
 }
 .bank-art-strip img{
-  animation:shirohaFadeRise .7s ease both
+  animation:misakaFadeRise .7s ease both
 }
 .practice-art-strip img{
-  animation:shirohaFloat 4.6s ease-in-out infinite
+  animation:misakaFloat 4.6s ease-in-out infinite
 }
 .exam-art-strip img{
-  animation:shirohaBreathe 4.4s ease-in-out infinite
+  animation:misakaBreathe 4.4s ease-in-out infinite
 }
 .wrongbook-art-strip img{
-  animation:shirohaNudge 5.2s ease-in-out infinite
+  animation:misakaNudge 5.2s ease-in-out infinite
 }
 .records-art-strip img{
-  animation:shirohaBreathe 5.6s ease-in-out infinite
+  animation:misakaBreathe 5.6s ease-in-out infinite
 }
 .settings-art-strip img{
-  animation:shirohaFloat 5s ease-in-out infinite
+  animation:misakaFloat 5s ease-in-out infinite
 }
 .asset-reference-details img{
-  animation:shirohaFadeRise .55s ease both
+  animation:misakaFadeRise .55s ease both
 }
 .page-art-strip{
-  animation:shirohaCardIn .48s ease both
+  animation:misakaCardIn .48s ease both
 }
 .card{
-  animation:shirohaCardIn .38s ease both
+  animation:misakaCardIn .38s ease both
 }
 @keyframes splashCardIn{
   from{
@@ -1500,7 +1500,7 @@ textarea,input,select,button{
     visibility:hidden
   }
 }
-@keyframes shirohaFloat{
+@keyframes misakaFloat{
   0%,100%{
     transform:translateY(0)
   }
@@ -1508,7 +1508,7 @@ textarea,input,select,button{
     transform:translateY(-6px)
   }
 }
-@keyframes shirohaBreathe{
+@keyframes misakaBreathe{
   0%,100%{
     transform:scale(1)
   }
@@ -1516,7 +1516,7 @@ textarea,input,select,button{
     transform:scale(1.025)
   }
 }
-@keyframes shirohaNudge{
+@keyframes misakaNudge{
   0%,100%{
     transform:rotate(0deg) translateY(0)
   }
@@ -1527,7 +1527,7 @@ textarea,input,select,button{
     transform:rotate(1.4deg) translateY(-3px)
   }
 }
-@keyframes shirohaFadeRise{
+@keyframes misakaFadeRise{
   from{
     opacity:0;
     transform:translateY(8px)
@@ -1537,7 +1537,7 @@ textarea,input,select,button{
     transform:translateY(0)
   }
 }
-@keyframes shirohaCardIn{
+@keyframes misakaCardIn{
   from{
     opacity:.88;
     transform:translateY(4px)
@@ -2110,7 +2110,7 @@ input:focus,select:focus,textarea:focus{
 
 
 
-/* SHIROHA_V28_1_BANK_MOBILE_LAYOUT_START
+/* MISAKA_V28_1_BANK_MOBILE_LAYOUT_START
    题库管理移动端结构优化：当前题库上方统一选择，卡片只展示信息，单题库操作收进更多菜单。 */
 .bank-manage-toolbar-v28{
   background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(239,247,255,.92))!important;
@@ -2306,10 +2306,10 @@ input:focus,select:focus,textarea:focus{
     padding:8px 4px!important;
   }
 }
-/* SHIROHA_V28_1_BANK_MOBILE_LAYOUT_END */
+/* MISAKA_V28_1_BANK_MOBILE_LAYOUT_END */
 
 
-/* SHIROHA_V28_2_ASSET_REFRESH_START
+/* MISAKA_V28_2_ASSET_REFRESH_START
    首页与分页素材替换：统一蓝白云母亚克力风格，减少素材数量并提升融合度。 */
 .hero-card,.import-stage-panel,.page-art-strip,.asset-reference-details{
   position:relative;
@@ -2368,10 +2368,10 @@ input:focus,select:focus,textarea:focus{
     max-height:132px;
   }
 }
-/* SHIROHA_V28_2_ASSET_REFRESH_END */
+/* MISAKA_V28_2_ASSET_REFRESH_END */
 
 
-/* SHIROHA_V28_3_VISUAL_POLISH_START
+/* MISAKA_V28_3_VISUAL_POLISH_START
    视觉目标：蓝白统一、云母亚克力质感、素材融入卡片；导入备份区域独立，不夹在普通题库导入流程中。 */
 :root{
   --sq-blue:#2f6fed;
@@ -2550,10 +2550,10 @@ input:focus,select:focus,textarea:focus{
     max-height:126px!important;
   }
 }
-/* SHIROHA_V28_3_VISUAL_POLISH_END */
+/* MISAKA_V28_3_VISUAL_POLISH_END */
 
 
-/* SHIROHA_V28_3_1_IMPORT_BACKUP_POSITION_START
+/* MISAKA_V28_3_1_IMPORT_BACKUP_POSITION_START
    备份 JSON 导入保留在导入题库页底部，不再夹在普通题库导入、双文件导入和识别结果之间。 */
 .backup-restore-bottom-v2831{
   margin-top:28px!important;
@@ -2584,10 +2584,10 @@ input:focus,select:focus,textarea:focus{
     margin-top:22px!important;
   }
 }
-/* SHIROHA_V28_3_1_IMPORT_BACKUP_POSITION_END */
+/* MISAKA_V28_3_1_IMPORT_BACKUP_POSITION_END */
 
 
-/* SHIROHA_V28_3_3_IMPORT_ART_BG_FIX_START
+/* MISAKA_V28_3_3_IMPORT_ART_BG_FIX_START
    修复导入页素材右侧奇怪蓝色圆形背景，改为更干净的蓝白渐变，不干扰素材本身显示。 */
 .import-stage-panel{
   background:
@@ -2611,10 +2611,10 @@ input:focus,select:focus,textarea:focus{
       linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(246,250,255,.98) 72%, rgba(239,246,255,.95) 100%) !important;
   }
 }
-/* SHIROHA_V28_3_3_IMPORT_ART_BG_FIX_END */
+/* MISAKA_V28_3_3_IMPORT_ART_BG_FIX_END */
 
 
-/* SHIROHA_V28_3_4_SAFE_PAGE_FIX_START
+/* MISAKA_V28_3_4_SAFE_PAGE_FIX_START
    安全修复：不再改写 index.html 的 section 结构，避免页面路由全部落到导入页。
    只通过样式修正导入页视觉和备份区域的呈现，不破坏页面切换。 */
 .view{display:none}
@@ -2652,10 +2652,10 @@ input:focus,select:focus,textarea:focus{
       linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(246,250,255,.98) 72%, rgba(239,246,255,.95) 100%) !important;
   }
 }
-/* SHIROHA_V28_3_4_SAFE_PAGE_FIX_END */
+/* MISAKA_V28_3_4_SAFE_PAGE_FIX_END */
 
 
-/* SHIROHA_V28_4_PRACTICE_ART_FIX_START
+/* MISAKA_V28_4_PRACTICE_ART_FIX_START
    修复刷题练习页素材背后的奇怪蓝色圆形区域，并让素材更大、更靠中。 */
 .practice-art-strip{
   grid-template-columns:minmax(0,1fr) minmax(220px,360px) !important;
@@ -2704,10 +2704,10 @@ input:focus,select:focus,textarea:focus{
     max-height:160px !important;
   }
 }
-/* SHIROHA_V28_4_PRACTICE_ART_FIX_END */
+/* MISAKA_V28_4_PRACTICE_ART_FIX_END */
 
 
-/* SHIROHA_V28_4_1_CARD_ART_FIX_START
+/* MISAKA_V28_4_1_CARD_ART_FIX_START
    修复插画卡片本身的蓝色气泡干扰；图片尺寸改为克制显示，保证素材完整、不挤压卡片。 */
 
 /* 去掉插画卡片内部过重的圆形蓝色气泡，不再让背景块压到素材上。 */
@@ -2865,10 +2865,10 @@ input:focus,select:focus,textarea:focus{
   }
 }
 
-/* SHIROHA_V28_4_1_CARD_ART_FIX_END */
+/* MISAKA_V28_4_1_CARD_ART_FIX_END */
 
 
-/* SHIROHA_V28_4_2_ART_SIZE_TUNING_START
+/* MISAKA_V28_4_2_ART_SIZE_TUNING_START
    按页面微调插画在卡片里的尺寸与位置：
    - 题库管理：缩小约20%
    - 刷题练习：放大约20%，并移到更居中的位置
@@ -2973,10 +2973,10 @@ input:focus,select:focus,textarea:focus{
     max-height:102px !important;
   }
 }
-/* SHIROHA_V28_4_2_ART_SIZE_TUNING_END */
+/* MISAKA_V28_4_2_ART_SIZE_TUNING_END */
 
 
-/* SHIROHA_V28_4_4_ART_BALANCE_START
+/* MISAKA_V28_4_4_ART_BALANCE_START
    插画尺寸二次收敛：不再激进放大，保证素材在卡片里完整显示，并兼顾卡片高度。
    只调“图片在卡片中的显示尺寸和位置”，不替换素材。 */
 
@@ -3189,10 +3189,10 @@ input:focus,select:focus,textarea:focus{
     max-height:94px !important;
   }
 }
-/* SHIROHA_V28_4_4_ART_BALANCE_END */
+/* MISAKA_V28_4_4_ART_BALANCE_END */
 
 
-/* SHIROHA_V28_4_6_TITLE_AND_ART_BG_FIX_START
+/* MISAKA_V28_4_6_TITLE_AND_ART_BG_FIX_START
    修复页面双标题重复感：通过差异化内卡标题减弱重复；
    同时将分页插画区右侧背景统一为白色，不再使用淡蓝色块。 */
 .page-art-strip,
@@ -3227,10 +3227,10 @@ input:focus,select:focus,textarea:focus{
 .section-head .kicker + h2{
   letter-spacing:.01em;
 }
-/* SHIROHA_V28_4_6_TITLE_AND_ART_BG_FIX_END */
+/* MISAKA_V28_4_6_TITLE_AND_ART_BG_FIX_END */
 
 
-/* SHIROHA_V28_4_7_REMOVE_OUTER_TITLE_START
+/* MISAKA_V28_4_7_REMOVE_OUTER_TITLE_START
    直接移除顶部外层页面标题区域，仅保留右侧题库选择与保存数据操作。 */
 .topbar{
   justify-content:flex-end !important;
@@ -3248,10 +3248,10 @@ input:focus,select:focus,textarea:focus{
     padding-bottom:10px !important;
   }
 }
-/* SHIROHA_V28_4_7_REMOVE_OUTER_TITLE_END */
+/* MISAKA_V28_4_7_REMOVE_OUTER_TITLE_END */
 
 
-/* SHIROHA_V28_4_8_APP_READABILITY_NAV_START
+/* MISAKA_V28_4_8_APP_READABILITY_NAV_START
    App 成品界面修正：
    1) 隐藏开发阶段用于说明素材/布局的小字提示；
    2) 移动端表单不再横向溢出卡片；
@@ -3418,10 +3418,10 @@ button{
     box-shadow:0 10px 24px rgba(47,111,237,.14), inset 0 1px 0 rgba(255,255,255,.82) !important;
   }
 }
-/* SHIROHA_V28_4_8_APP_READABILITY_NAV_END */
+/* MISAKA_V28_4_8_APP_READABILITY_NAV_END */
 
 
-/* SHIROHA_V28_4_11_MOBILE_PERF_START
+/* MISAKA_V28_4_11_MOBILE_PERF_START
    移动端性能优化：
    - 导航切换不再触发全量 renderAll；
    - 移动端禁用/弱化 blur、backdrop-filter、大阴影和过多动画；
@@ -3499,9 +3499,9 @@ button{
     scroll-behavior:auto !important;
   }
 }
-/* SHIROHA_V28_4_11_MOBILE_PERF_END */
+/* MISAKA_V28_4_11_MOBILE_PERF_END */
 
-/* SHIROHA_V28_2_DUAL_LAYOUT_REFINEMENT_START
+/* MISAKA_V28_2_DUAL_LAYOUT_REFINEMENT_START
    双端通用精修：稳定移动端页面位置、收紧底部导航、统一角色素材落点。 */
 @media(max-width:720px){
   html,
@@ -3880,10 +3880,10 @@ button{
     max-width:106px !important;
   }
 }
-/* SHIROHA_V28_2_DUAL_LAYOUT_REFINEMENT_END */
+/* MISAKA_V28_2_DUAL_LAYOUT_REFINEMENT_END */
 
 
-/* SHIROHA_APP_V28_5_STAGE_CARD_COMPACT_START
+/* MISAKA_APP_V28_5_STAGE_CARD_COMPACT_START
    App 专属：除首页外，将角色说明区收束为更靠上的扁平卡片，参考导入页节奏，节省练习/考试等页面上方空白。 */
 @media(max-width:720px){
   #banks.view > .card:first-child,
@@ -4042,9 +4042,9 @@ button{
     max-width:116px !important;
   }
 }
-/* SHIROHA_APP_V28_5_STAGE_CARD_COMPACT_END */
+/* MISAKA_APP_V28_5_STAGE_CARD_COMPACT_END */
 
-/* SHIROHA_APP_V28_6_TITLE_ACTION_ART_TIGHTEN_START
+/* MISAKA_APP_V28_6_TITLE_ACTION_ART_TIGHTEN_START
    App 专属：标题区右上角化、首页版本卡片收紧、插画白底和素材缩小，避免文字/图片被挤压。 */
 @media(max-width:720px){
   /* 首页版本卡片：标题单行、整体收紧 */
@@ -4394,9 +4394,9 @@ button{
     padding:0 8px !important;
   }
 }
-/* SHIROHA_APP_V28_6_TITLE_ACTION_ART_TIGHTEN_END */
+/* MISAKA_APP_V28_6_TITLE_ACTION_ART_TIGHTEN_END */
 
-/* SHIROHA_APP_V28_7_TOP_RIGHT_ART_START
+/* MISAKA_APP_V28_7_TOP_RIGHT_ART_START
    App 专属：在顶部右侧空白区补充压缩后的行走素材，并统一顶部为蓝白柔和风格。 */
 .app-mobile-top-art{
   display:none;
@@ -4452,9 +4452,9 @@ button{
     padding-right:6px !important;
   }
 }
-/* SHIROHA_APP_V28_7_TOP_RIGHT_ART_END */
+/* MISAKA_APP_V28_7_TOP_RIGHT_ART_END */
 
-/* SHIROHA_APP_V28_8_TOPBAR_AND_CARD_TOP_TIGHTEN_START
+/* MISAKA_APP_V28_8_TOPBAR_AND_CARD_TOP_TIGHTEN_START
    App 专属：顶部题库选择与保存按钮改为单行，选择框左边界对齐页面主卡片内容；各页英文 kicker 上提到白色卡片顶部，进一步节省纵向空间。 */
 @media(max-width:720px){
   .main{
@@ -4577,9 +4577,9 @@ button{
     padding:0 8px !important;
   }
 }
-/* SHIROHA_APP_V28_8_TOPBAR_AND_CARD_TOP_TIGHTEN_END */
+/* MISAKA_APP_V28_8_TOPBAR_AND_CARD_TOP_TIGHTEN_END */
 
-/* SHIROHA_APP_V28_9_USER_FACING_IMPORT_REVIEW_START
+/* MISAKA_APP_V28_9_USER_FACING_IMPORT_REVIEW_START
    App 专属：减少开发侧浅色说明文字；导入核对区增加沉浸模式，提升手机端核对效率。 */
 @media(max-width:720px){
   /* 去掉或压缩面向开发者的浅色说明，保留必要操作信息 */
@@ -4792,10 +4792,10 @@ button{
     grid-template-columns:repeat(2,minmax(0,1fr)) !important;
   }
 }
-/* SHIROHA_APP_V28_9_USER_FACING_IMPORT_REVIEW_END */
+/* MISAKA_APP_V28_9_USER_FACING_IMPORT_REVIEW_END */
 
-/* SHIROHA_APP_V28_9_HEADER_ART_AND_TITLE_ACTION_ALIGN_START
-   App 专属：顶部行走素材移入 Shiroha Quiz 标题白色区域右侧并放大；页面标题右侧按钮/状态与主标题同高对齐。 */
+/* MISAKA_APP_V28_9_HEADER_ART_AND_TITLE_ACTION_ALIGN_START
+   App 专属：顶部行走素材移入 Misaka Quiz 标题白色区域右侧并放大；页面标题右侧按钮/状态与主标题同高对齐。 */
 @media(max-width:720px){
   .topbar{
     position:relative !important;
@@ -4868,15 +4868,15 @@ button{
     margin-top:14px !important;
   }
 }
-/* SHIROHA_APP_V28_9_HEADER_ART_AND_TITLE_ACTION_ALIGN_END */
+/* MISAKA_APP_V28_9_HEADER_ART_AND_TITLE_ACTION_ALIGN_END */
 
-/* SHIROHA_APP_V29_HEADER_ART_RECORDS_ACTION_ALIGN_START
+/* MISAKA_APP_V29_HEADER_ART_RECORDS_ACTION_ALIGN_START
    App-only: 基于 v28 继续叠加。
-   1) 顶部行走素材固定到最上方 Shiroha Quiz 标题右侧，脱离题库选择/保存按钮区域；
+   1) 顶部行走素材固定到最上方 Misaka Quiz 标题右侧，脱离题库选择/保存按钮区域；
    2) 补齐刷题记录页标题右侧按钮对齐；
    3) 保留 v27：Web 开屏层不显示静态图标。 */
 @media(max-width:720px){
-  /* 顶部装饰素材：放在 Shiroha Quiz 顶部白色标题区右侧，不再贴着题库选择卡片。 */
+  /* 顶部装饰素材：放在 Misaka Quiz 顶部白色标题区右侧，不再贴着题库选择卡片。 */
   .topbar .app-mobile-top-art,
   .app-mobile-top-art{
     display:block !important;
@@ -4962,12 +4962,12 @@ button{
     font-size:11px !important;
   }
 }
-/* SHIROHA_APP_V29_HEADER_ART_RECORDS_ACTION_ALIGN_END */
+/* MISAKA_APP_V29_HEADER_ART_RECORDS_ACTION_ALIGN_END */
 
 
-/* SHIROHA_APP_V29_4_NATIVE_SPLASH_TOPBAR_ALIGN_START
+/* MISAKA_APP_V29_4_NATIVE_SPLASH_TOPBAR_ALIGN_START
    App-only fix: hide native launcher-icon splash, use welcome avatar in launch/splash,
-   place walking strip inside the Shiroha Quiz title bar, and center-align favorite review button. */
+   place walking strip inside the Misaka Quiz title bar, and center-align favorite review button. */
 .app-splash-logo{
   display:block !important;
   width:min(58vw,190px) !important;
@@ -5113,12 +5113,12 @@ button{
   from{opacity:0}
   to{opacity:1}
 }
-/* SHIROHA_APP_V29_4_NATIVE_SPLASH_TOPBAR_ALIGN_END */
+/* MISAKA_APP_V29_4_NATIVE_SPLASH_TOPBAR_ALIGN_END */
 
 
-/* SHIROHA_APP_V29_6_REMOVE_DUPLICATE_WEB_TOPBAR_TITLE_START
+/* MISAKA_APP_V29_6_REMOVE_DUPLICATE_WEB_TOPBAR_TITLE_START
    App-only correction:
-   - Do not create or display a second in-Web “Shiroha Quiz” title card.
+   - Do not create or display a second in-Web “Misaka Quiz” title card.
    - The Web topbar is only the bank selector + save button control card.
    - The walking strip is fixed beside the existing top app title area.
    - Splash logic is intentionally untouched. */
@@ -5260,13 +5260,13 @@ button{
     height:46px !important;
   }
 }
-/* SHIROHA_APP_V29_6_REMOVE_DUPLICATE_WEB_TOPBAR_TITLE_END */
+/* MISAKA_APP_V29_6_REMOVE_DUPLICATE_WEB_TOPBAR_TITLE_END */
 
 
-/* SHIROHA_APP_V29_10_TOPBAR_EMBED_BLUE_COMPACT_START
+/* MISAKA_APP_V29_10_TOPBAR_EMBED_BLUE_COMPACT_START
    App WebView-only:
    1) 单一 .topbar，不再新增第二个标题卡片；
-   2) 走路素材写入 Shiroha Quiz 同一行，禁止 fixed/absolute 悬浮；
+   2) 走路素材写入 Misaka Quiz 同一行，禁止 fixed/absolute 悬浮；
    3) 最上端区域改为更短的蓝白色调。 */
 @media(max-width:720px){
   html,
@@ -5465,10 +5465,10 @@ button{
     padding:0 7px !important;
   }
 }
-/* SHIROHA_APP_V29_10_TOPBAR_EMBED_BLUE_COMPACT_END */
+/* MISAKA_APP_V29_10_TOPBAR_EMBED_BLUE_COMPACT_END */
 
 
-/* SHIROHA_APP_V29_15_REMOVE_ADDED_TOPBAR_FINAL_START
+/* MISAKA_APP_V29_15_REMOVE_ADDED_TOPBAR_FINAL_START
    APP WebView 内置页最终修正：
    - 已在 index.html 物理删除之前新增的 topbar-title-row / 走路素材；
    - header.topbar 只保留题库选择 + 保存数据；
@@ -5599,10 +5599,10 @@ button{
     font-size:11px !important;
   }
 }
-/* SHIROHA_APP_V29_15_REMOVE_ADDED_TOPBAR_FINAL_END */
+/* MISAKA_APP_V29_15_REMOVE_ADDED_TOPBAR_FINAL_END */
 
 
-/* SHIROHA_APP_V29_16_LIGHT_BLUE_TOPBAR_START
+/* MISAKA_APP_V29_16_LIGHT_BLUE_TOPBAR_START
    APP WebView-only: lighten the top .topbar blue so it blends with the page background. */
 @media(max-width:720px){
   html,
@@ -5628,10 +5628,10 @@ button{
     border-color:rgba(47,111,237,.10) !important;
   }
 }
-/* SHIROHA_APP_V29_16_LIGHT_BLUE_TOPBAR_END */
+/* MISAKA_APP_V29_16_LIGHT_BLUE_TOPBAR_END */
 
 
-/* SHIROHA_APP_V29_18_DASHBOARD_PANEL_START
+/* MISAKA_APP_V29_18_DASHBOARD_PANEL_START
    APP 首页新增学习仪表盘：
    - 位于当前版本/统计卡片与“加载内置 C1 题库”之间；
    - 使用行走素材；
@@ -5765,10 +5765,10 @@ button{
     font-size:20px !important;
   }
 }
-/* SHIROHA_APP_V29_18_DASHBOARD_PANEL_END */
+/* MISAKA_APP_V29_18_DASHBOARD_PANEL_END */
 
 
-/* SHIROHA_APP_V29_20_COMPACT_DASHBOARD_FINAL_START
+/* MISAKA_APP_V29_20_COMPACT_DASHBOARD_FINAL_START
    修正首页学习仪表盘：
    - 卡片高度可控；
    - 插画作为右侧小装饰，不再撑满页面；
@@ -5942,10 +5942,10 @@ button{
     font-size:17px !important;
   }
 }
-/* SHIROHA_APP_V29_20_COMPACT_DASHBOARD_FINAL_END */
+/* MISAKA_APP_V29_20_COMPACT_DASHBOARD_FINAL_END */
 
 
-/* SHIROHA_APP_V29_21_DASHBOARD_NO_IMAGE_UI_FILL_START
+/* MISAKA_APP_V29_21_DASHBOARD_NO_IMAGE_UI_FILL_START
    首页学习仪表盘重做：
    - 不再使用图片素材；
    - 仪表盘内部用纯 UI 信息块填满卡片；
@@ -6121,10 +6121,10 @@ button{
     font-size:17px !important;
   }
 }
-/* SHIROHA_APP_V29_21_DASHBOARD_NO_IMAGE_UI_FILL_END */
+/* MISAKA_APP_V29_21_DASHBOARD_NO_IMAGE_UI_FILL_END */
 
 
-/* SHIROHA_APP_V29_23_REMOVE_HOME_LOAD_BUTTONS_DOM_START
+/* MISAKA_APP_V29_23_REMOVE_HOME_LOAD_BUTTONS_DOM_START
    APP 首页物理删除“加载内置 C1 题库 / 在题库管理中加载”两个重复入口。
    这里仅作为缓存/旧结构兜底隐藏，不影响题库管理页和导入页功能。 */
 @media(max-width:720px){
@@ -6141,10 +6141,10 @@ button{
     overflow:hidden !important;
   }
 }
-/* SHIROHA_APP_V29_23_REMOVE_HOME_LOAD_BUTTONS_DOM_END */
+/* MISAKA_APP_V29_23_REMOVE_HOME_LOAD_BUTTONS_DOM_END */
 
 
-/* SHIROHA_APP_V29_24_DASHBOARD_LAYOUT_FIX_START
+/* MISAKA_APP_V29_24_DASHBOARD_LAYOUT_FIX_START
    仪表盘细化：
    - 当前题库改为满宽信息卡，不再被并排压缩；
    - 今日建议改为满宽浅蓝提示条；
@@ -6354,9 +6354,9 @@ button{
     font-size:17px !important;
   }
 }
-/* SHIROHA_APP_V29_24_DASHBOARD_LAYOUT_FIX_END */
+/* MISAKA_APP_V29_24_DASHBOARD_LAYOUT_FIX_END */
 
-/* SHIROHA_APP_V30_1_DOCX_IMAGE_IMPORT_SYNC_START
+/* MISAKA_APP_V30_1_DOCX_IMAGE_IMPORT_SYNC_START
    WebView App 同步 Web 版 DOCX 图片题/复杂真题导入：限制题干图片展示尺寸，避免图形题和资料图撑开移动端页面。 */
 .question-media{
   margin:14px 0;
@@ -6460,9 +6460,9 @@ body.image-preview-open-v302{overflow:hidden;}
   .question-image-viewer-v302{padding:12px;}
   .question-image-viewer-stage-v302 img{max-width:none;max-height:none;}
 }
-/* SHIROHA_APP_V30_1_DOCX_IMAGE_IMPORT_SYNC_END */
+/* MISAKA_APP_V30_1_DOCX_IMAGE_IMPORT_SYNC_END */
 
-/* SHIROHA_APP_V32_MOBILE_PRACTICE_EXAM_COMPACT_START
+/* MISAKA_APP_V32_MOBILE_PRACTICE_EXAM_COMPACT_START
    WebView App 专属修正：撤回右侧悬挂答题卡，只保留考试沉浸；进一步压缩练习/考试选项卡片空白。 */
 body.practice-focus #practice.view{
   padding:8px !important;
@@ -6758,9 +6758,9 @@ body.exam-focus .exam-focus-actions button{
     border-radius:11px !important;
   }
 }
-/* SHIROHA_APP_V32_MOBILE_PRACTICE_EXAM_COMPACT_END */
+/* MISAKA_APP_V32_MOBILE_PRACTICE_EXAM_COMPACT_END */
 
-/* SHIROHA_APP_V33_RECORDS_AND_MOBILE_COMPACT_START
+/* MISAKA_APP_V33_RECORDS_AND_MOBILE_COMPACT_START
    WebView App 专属：结果回归记录页；手机端按钮/选项/底部导航做适度收敛，不新增布局。 */
 .compact-end-v5{
   padding:16px !important;
@@ -6876,10 +6876,10 @@ body.exam-focus .exam-focus-actions button{
     border-radius:13px !important;
   }
 }
-/* SHIROHA_APP_V33_RECORDS_AND_MOBILE_COMPACT_END */
+/* MISAKA_APP_V33_RECORDS_AND_MOBILE_COMPACT_END */
 
 
-/* SHIROHA_APP_V34_DASHBOARD_AND_SIMPLE_OPTIONS_FIX_START
+/* MISAKA_APP_V34_DASHBOARD_AND_SIMPLE_OPTIONS_FIX_START
    WebView App 专属：学习仪表盘两张状态卡做等高收敛；隐藏默认内置题库加载提示卡；短选项题进一步减少空白。 */
 .builtin-bank-card-v252,
 #builtin-bank-panel-v252{
@@ -6992,9 +6992,9 @@ body.exam-focus .exam-focus-actions button{
     min-height:78px !important;
   }
 }
-/* SHIROHA_APP_V34_DASHBOARD_AND_SIMPLE_OPTIONS_FIX_END */
+/* MISAKA_APP_V34_DASHBOARD_AND_SIMPLE_OPTIONS_FIX_END */
 
-/* SHIROHA_APP_V35_EXAM_ANSWER_SHEET_TOGGLE_START
+/* MISAKA_APP_V35_EXAM_ANSWER_SHEET_TOGGLE_START
    WebView App 专属：考试沉浸页中部小型答题卡开关；默认收起，不占用主答题区域。 */
 body.exam-focus .exam-sheet-toggle-row-v7{
   display:flex !important;
@@ -7133,9 +7133,9 @@ body.exam-focus .exam-sheet-grid-v7 button.answered{
     font-size:10.5px !important;
   }
 }
-/* SHIROHA_APP_V35_EXAM_ANSWER_SHEET_TOGGLE_END */
+/* MISAKA_APP_V35_EXAM_ANSWER_SHEET_TOGGLE_END */
 
-/* SHIROHA_APP_V36_EXAM_SHEET_HEADER_ALIGN_FIX_START
+/* MISAKA_APP_V36_EXAM_SHEET_HEADER_ALIGN_FIX_START
    WebView App 专属：答题卡按钮移入考试标题栏中间，撤掉单独占一行的小卡；计数文字改为浅蓝。 */
 body.exam-focus .exam-focus-head{
   display:grid !important;
@@ -7217,9 +7217,9 @@ body.exam-focus .exam-sheet-panel-v7{
     font-size:10px !important;
   }
 }
-/* SHIROHA_APP_V36_EXAM_SHEET_HEADER_ALIGN_FIX_END */
+/* MISAKA_APP_V36_EXAM_SHEET_HEADER_ALIGN_FIX_END */
 
-/* SHIROHA_APP_V37_EXAM_SHEET_LIGHT_ACRYLIC_AND_LIMIT_LABEL_FIX_START
+/* MISAKA_APP_V37_EXAM_SHEET_LIGHT_ACRYLIC_AND_LIMIT_LABEL_FIX_START
    WebView App 专属：考试头部答题卡按钮居中、浅白浅蓝亚克力质感；题量文案见 index.html。 */
 body.exam-focus .exam-focus-head{
   grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) !important;
@@ -7298,9 +7298,9 @@ body.exam-focus .exam-head-sheet-v8 .exam-sheet-toggle-v7.open{
     padding:1px 4px !important;
   }
 }
-/* SHIROHA_APP_V37_EXAM_SHEET_LIGHT_ACRYLIC_AND_LIMIT_LABEL_FIX_END */
+/* MISAKA_APP_V37_EXAM_SHEET_LIGHT_ACRYLIC_AND_LIMIT_LABEL_FIX_END */
 
-/* SHIROHA_APP_V38_PRACTICE_FULL_WIDTH_AND_OPTION_TIGHTEN_START
+/* MISAKA_APP_V38_PRACTICE_FULL_WIDTH_AND_OPTION_TIGHTEN_START
    WebView App 专属：练习沉浸页贴近手机宽度；练习/考试选项卡片再次收紧，重点减少简单选项的大块空白。 */
 body.practice-focus .main{
   padding:0 !important;
@@ -7414,7 +7414,7 @@ body.exam-focus .exam-q{
     padding:3px 6px !important;
   }
 }
-/* SHIROHA_APP_V38_PRACTICE_FULL_WIDTH_AND_OPTION_TIGHTEN_END */
+/* MISAKA_APP_V38_PRACTICE_FULL_WIDTH_AND_OPTION_TIGHTEN_END */
 
 /* v13: WebView App 题库二次编辑入口，仅服务“更多 → 编辑” */
 .bank-edit-toolbar-v13{
@@ -7688,7 +7688,7 @@ body.exam-focus .exam-q{
   }
 }
 
-/* SHIROHA_WEBVIEW_V20_IMPORT_REVIEW_MOBILE_CARDS_START
+/* MISAKA_WEBVIEW_V20_IMPORT_REVIEW_MOBILE_CARDS_START
    WebView App：导入识别结果移动端沉浸核对改为卡片式列表，并调整顶部操作顺序。 */
 .import-preview-mobile-list{
   display:none;
@@ -7852,4 +7852,4 @@ body.exam-focus .exam-q{
     font-size:12px !important;
   }
 }
-/* SHIROHA_WEBVIEW_V20_IMPORT_REVIEW_MOBILE_CARDS_END */
+/* MISAKA_WEBVIEW_V20_IMPORT_REVIEW_MOBILE_CARDS_END */

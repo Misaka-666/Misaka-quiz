@@ -43,7 +43,7 @@
                 android:id="@+id/launch_mascot"
                 android:layout_width="174dp"
                 android:layout_height="150dp"
-                android:contentDescription="Shiroha Quiz"
+                android:contentDescription="Misaka Quiz"
                 android:scaleType="fitCenter"
                 android:src="@drawable/home_welcome_avatar" />
 
@@ -51,7 +51,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:text="Shiroha Quiz"
+                android:text="Misaka Quiz"
                 android:textColor="#10233F"
                 android:textSize="23sp"
                 android:textStyle="bold" />

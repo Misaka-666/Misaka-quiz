@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.yiqiu.shirohaquiz"
+    namespace = "com.yiqiu.misakaquiz"
     compileSdk = 34
 
     defaultConfig {
@@ -20,13 +20,13 @@ android {
     productFlavors {
         create("web") {
             dimension = "variant"
-            applicationId = "com.yiqiu.shirohaquiz"
+            applicationId = "com.yiqiu.misakaquiz"
             versionCode = 38
             versionName = "0.7.5-alpha"
         }
         create("native") {
             dimension = "variant"
-            applicationId = "com.reqir.shirohaquiz"
+            applicationId = "com.reqir.misakaquiz"
             versionCode = 182
             versionName = "0.8.9"
         }
@@ -86,15 +86,15 @@ android {
 val exportWebReleaseApk by tasks.registering(Copy::class) {
     val webVersionName = android.productFlavors.getByName("web").versionName
     from(layout.buildDirectory.file("outputs/apk/web/release/app-web-release.apk"))
-    into(layout.buildDirectory.dir("outputs/shiroha-quiz"))
-    rename { "Shiroha-Quiz-v$webVersionName-web-release.apk" }
+    into(layout.buildDirectory.dir("outputs/misaka-quiz"))
+    rename { "Misaka-Quiz-v$webVersionName-web-release.apk" }
 }
 
 val exportNativeReleaseApk by tasks.registering(Copy::class) {
     val nativeVersionName = android.productFlavors.getByName("native").versionName
     from(layout.buildDirectory.file("outputs/apk/native/release/app-native-release.apk"))
-    into(layout.buildDirectory.dir("outputs/shiroha-quiz"))
-    rename { "Shiroha-Quiz-v$nativeVersionName-native-release.apk" }
+    into(layout.buildDirectory.dir("outputs/misaka-quiz"))
+    rename { "Misaka-Quiz-v$nativeVersionName-native-release.apk" }
 }
 
 afterEvaluate {

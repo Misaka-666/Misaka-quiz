@@ -6137,7 +6137,7 @@ function ensureBankManageExportPanelV23(){
   if($('#bank-bulk-export-panel-v23'))return;
   const bankList=$('#bank-list');if(!bankList)return;
   bankList.insertAdjacentHTML('beforebegin',`<div id="bank-bulk-export-panel-v23" class="data-tool-card-v23 bank-bulk-panel-v23 bank-manage-toolbar-v28">
-    <div class="section-head compact-head-v23"><div><h3>当前题库与批量管理</h3><p class="muted">在这里切换当前题库；勾选下方题库后，可以批量导出题库 JSON 或删除。</p></div></div>
+    <div class="section-head compact-head-v23"><div><h3>当前题库与批量管理</h3><p class="muted">在这里切换当前题库；勾选下方题库后，可以批量导出题库 JSON、合并为新题库或删除。</p></div></div>
     <div class="bank-current-bar-v28">
       <label>当前题库<select id="bank-current-select-v28"></select></label>
       <span class="muted">切换后会同步预览、练习、考试和错题范围。</span>
@@ -6148,6 +6148,7 @@ function ensureBankManageExportPanelV23(){
       <button class="ghost" id="export-bank-current-v23" type="button">仅选当前题库</button>
       <button class="primary" id="export-selected-banks-v23" type="button">导出选中题库 JSON</button>
       <button class="ghost danger" id="delete-selected-banks-v32" type="button">删除选中题库</button>
+      <button class="primary" id="merge-selected-banks-v23" type="button">合并选中题库为新题库</button>
     </div>
     <div id="export-bank-summary-v23" class="notice warn">请选择需要管理的题库。</div>
   </div>`);
@@ -6157,6 +6158,7 @@ function ensureBankManageExportPanelV23(){
   $('#export-bank-current-v23').onclick=()=>{exportBankSelectedV23=new Set([activeBank().id]);renderBankList()};
   $('#export-selected-banks-v23').onclick=exportSelectedBanksV23;
   const deleteSelectedBtnV32=$('#delete-selected-banks-v32');if(deleteSelectedBtnV32)deleteSelectedBtnV32.onclick=deleteSelectedBanksV32;
+  const mergeSelectedBtnV23=$('#merge-selected-banks-v23');if(mergeSelectedBtnV23)mergeSelectedBtnV23.onclick=mergeSelectedBanksV23;
   renderBankToolbarV28();
 }
 function ensureImportBackupPanelV23(){/* v28.4.4: 导入配置 / 备份 JSON 入口已移动到设置/导出页，不再插入导入题库页。 */}
@@ -6234,6 +6236,7 @@ function renderExportBankSummaryV23(){
   if(summary){summary.textContent=selected.length?`已选择 ${selected.length} 个题库，共 ${qCount} 道题。`:'请至少选择一个题库。';summary.className='notice '+(selected.length?'ok':'warn')}
   const btn=$('#export-selected-banks-v23');if(btn)btn.disabled=!selected.length;
   const del=$('#delete-selected-banks-v32');if(del)del.disabled=!selected.length;
+  const merge=$('#merge-selected-banks-v23');if(merge)merge.disabled=selected.length<2;
 }
 function selectedBanksV23(){return state.banks.filter(b=>exportBankSelectedV23.has(b.id))}
 function deleteSelectedBanksV32(){deleteBanksV32([...exportBankSelectedV23])}
@@ -6252,6 +6255,39 @@ function deleteBanksV32(ids){
   saveSilent();renderAll();toast(beforeScope.type===PRACTICE_SCOPE_GROUP_V8916&&afterScope.type===PRACTICE_SCOPE_BANK_V8916?`已删除 ${targets.length} 个题库。原练习分组已无题库，已切换为当前题库。`:`已删除 ${targets.length} 个题库。`,beforeScope.type===PRACTICE_SCOPE_GROUP_V8916&&afterScope.type===PRACTICE_SCOPE_BANK_V8916?'warn':'ok');
 }
 function cleanFileNameV23(s){return String(s||'').replace(/[\\/:*?"<>|]/g,'_').replace(/\s+/g,'_').slice(0,80)||'bank'}
+function mergeSelectedBanksV23(){
+  const banks=selectedBanksV23();
+  if(banks.length<2){toast('请至少选择两个题库进行合并。','warn');return}
+  const totalQ=banks.reduce((n,b)=>n+(b.questions||[]).length,0);
+  const name=prompt('请输入合并后的新题库名称：',banks.map(b=>b.name).join(' + ').slice(0,60));
+  if(!name||!name.trim())return;
+  const groupName=normalizeBankGroupNameV58(prompt('请输入一级分组名称，可留空：','')||'');
+  // Merge all questions with deduplication
+  const seen=new Set();
+  const mergedQuestions=[];
+  let added=0,skipped=0;
+  banks.forEach(bank=>{
+    (bank.questions||[]).forEach(q=>{
+      const k=normalizeText(q.question);
+      if(seen.has(k)){skipped++;return}
+      seen.add(k);
+      mergedQuestions.push({...JSON.parse(JSON.stringify(q)),id:makeId('q',mergedQuestions.length+1),number:mergedQuestions.length+1});
+      added++;
+    });
+  });
+  const newBank={
+    id:makeId('bank'),
+    name:name.trim(),
+    groupName,
+    createdAt:now(),
+    updatedAt:now(),
+    questions:mergedQuestions
+  };
+  state.banks.push(newBank);
+  setPracticeBankScopeV8916(newBank.id,true);
+  saveSilent();renderAll();
+  toast(`已创建合并题库“${newBank.name}”：新增 ${added} 题，跳过重复 ${skipped} 题，共 ${newBank.questions.length} 题。`,'ok','合并完成');
+}
 function todayV23(){return new Date().toISOString().slice(0,10)}
 function buildQuestionBanksExportPayloadV598(banks){
   const exported=(banks||[]).map(serializeBankForCrossExportV53);
@@ -6751,8 +6787,9 @@ function mergeBackupBanksV23(normalized){
 }
 function download(name,text){
   const out=$('#export-output');if(out)out.value=text;
-  if(window.ShirohaAndroid&&typeof window.ShirohaAndroid.saveJsonFile==='function'){
-    try{const ok=window.ShirohaAndroid.saveJsonFile(String(name||'misaka-quiz.json'),String(text||''));if(ok){toast('已调用系统保存文件。若未看到文件，请检查 Downloads 或使用复制备份文本。','ok');return}}catch(e){warnDev('Android 原生保存接口调用失败',e)}
+  const bridge=window.MisakaAndroid||window.ShirohaAndroid;
+  if(bridge&&typeof bridge.saveJsonFile==='function'){
+    try{const ok=bridge.saveJsonFile(String(name||'misaka-quiz.json'),String(text||''));if(ok){toast('已调用系统保存文件。若未看到文件，请检查 Downloads 或使用复制备份文本。','ok');return}}catch(e){warnDev('Android 原生保存接口调用失败',e)}
   }
   const a=document.createElement('a');const url=URL.createObjectURL(new Blob([text],{type:'application/json;charset=utf-8'}));a.href=url;a.download=name;document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
