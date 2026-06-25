@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,6 +50,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Star
@@ -101,6 +103,7 @@ import com.yiqiu.misakaquiz.ui.components.QuizOptionCard
 import com.yiqiu.misakaquiz.ui.components.QuizOptionResultStyle
 import com.yiqiu.misakaquiz.ui.components.QuestionImagesBlock
 import com.yiqiu.misakaquiz.ui.components.QuizSessionExitIconButton
+import com.yiqiu.misakaquiz.ui.components.misakaNoRippleClickable
 import com.yiqiu.misakaquiz.ui.components.MisakaHeader
 import com.yiqiu.misakaquiz.ui.components.StatusChip
 import com.yiqiu.misakaquiz.ui.theme.MisakaSpacing
@@ -368,6 +371,8 @@ fun PracticeScreen(
                 selectedBatchGroupSize = selectedBatchGroupSize.coerceIn(1, selectedQuestionCount.coerceAtLeast(1)),
                 selectedBatchGroupSizeMode = selectedBatchGroupSizeMode,
                 showInlineAnswerSettings = QuizRepository.practiceInlineAnswerSettingsEnabled,
+                isReciteMode = isReciteMode,
+                onToggleReciteMode = { enabled -> QuizRepository.setPracticeReciteModeEnabled(context, enabled) },
                 onSelectPracticeMode = { mode ->
                     selectedPracticeMode = mode
                     QuizRepository.rememberPracticeSettings(context, practiceMode = mode)
@@ -720,7 +725,24 @@ fun PracticeScreen(
                         selected = true
                     )
                     CompactPracticeChip(typeLabel(question.type))
-                    if (isReciteMode) CompactPracticeChip("背题模式", selected = true)
+                    Surface(
+                        modifier = Modifier
+                            .defaultMinSize(minHeight = 32.dp)
+                            .misakaNoRippleClickable { QuizRepository.setPracticeReciteModeEnabled(context, !isReciteMode) },
+                        shape = RoundedCornerShape(MisakaRadius.Pill),
+                        color = if (isReciteMode) MisakaColors.BrandPrimarySoft else MisakaColors.CardMuted,
+                        border = BorderStroke(MisakaDimens.Hairline, if (isReciteMode) MisakaColors.LineSelected else MisakaColors.LineSoft)
+                    ) {
+                        Text(
+                            text = if (isReciteMode) "背题模式 ✓" else "背题模式",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                            color = if (isReciteMode) MaterialTheme.colorScheme.primary else MisakaColors.TextSecondary,
+                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     if (isBatchSubmitted && batchReviewWrongOnly) CompactPracticeChip("只看错题", selected = true)
                 }
                 FavoriteQuestionIconButton(
@@ -1362,6 +1384,8 @@ private fun PracticeSetupPanel(
     selectedBatchGroupSize: Int,
     selectedBatchGroupSizeMode: String,
     showInlineAnswerSettings: Boolean,
+    isReciteMode: Boolean,
+    onToggleReciteMode: (Boolean) -> Unit,
     onSelectPracticeMode: (String) -> Unit,
     onSelectPracticeOrderMode: (String) -> Unit,
     onSelectSequentialStartMode: (String) -> Unit,
@@ -1509,7 +1533,43 @@ private fun PracticeSetupPanel(
         }
 
         Spacer(Modifier.height(10.dp))
-        if (showInlineAnswerSettings) {
+
+        // Recite mode toggle
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .misakaNoRippleClickable { onToggleReciteMode(!isReciteMode) }
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.MenuBook,
+                contentDescription = "背题模式",
+                tint = if (isReciteMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(26.dp)
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "背题模式",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "直接显示答案和解析，不计入正确率和错题。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Switch(
+                checked = isReciteMode,
+                onCheckedChange = onToggleReciteMode
+            )
+        }
+
+        if (showInlineAnswerSettings && !isReciteMode) {
             Text("答题方式", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(7.dp))
             Row(
