@@ -1,7 +1,7 @@
 <div align="center">
 
 > [!NOTE]
-> 最近空闲时间沉迷「黑夜君临」，更新不会很勤快（）祝大家刷题顺利~
+> 本项目 fork 自 [reiqr/shiroha-quiz](https://github.com/reiqr/shiroha-quiz)，在此基础上增强了 Web 端 AI 功能（AI 解析 + AI 单题分析）并修复了若干导入兼容性问题。
 
 <img src="assets/promo4.jpg" width="800" alt="Misaka Quiz">
 </div>
@@ -44,8 +44,8 @@ Misaka Quiz 解决一个很实际的问题：
 
 ## 当前能力
 
-- Web 端功能完整，在线即可使用。
-- Android 原生 Compose 版：多空填空题、平板侧边导航、暗夜模式、AI 解析/AI 核对/AI 单题分析、表格导入、JSON 多格式导入、背题模式、斩题功能、选项打乱、智能复习、题目收藏、快速编辑、错题作用域切换、顺序练习进度记忆、记录只看错题筛选、错题复盘均已落地。
+- Web 端功能完整，在线即可使用（本 fork 额外支持 AI 解析与 AI 单题分析）。
+- Android 原生 Compose 版：多空填空题、平板侧边导航、暗夜模式、AI 核对/AI 补解析/图片题、背题模式、斩题功能、选项打乱、智能复习、题目收藏、快速编辑、错题作用域切换、顺序练习进度记忆、记录只看错题筛选、错题复盘均已落地。
 - 内置 C1 科目一题库，方便首次体验。
 
 ### 刷题与考试
@@ -126,14 +126,14 @@ Misaka Quiz 解决一个很实际的问题：
 - 支持批量导出单个题库 JSON
 - 恢复时可选合并或覆盖现有数据
 
-### AI 智能功能（原生版）
+### AI 智能功能
 
-- **AI 核对（导入页）**：导入结果可发送至 AI 自动校验题型、答案和解析
-- **AI 解析（导入页）**：AI 自动生成题目解析，适合补全缺解析或解析过短的题目
-- **AI 补解析（编辑器）**：题库编辑/审阅/导入预览/快速编辑四个入口统一集成，一键 AI 生成解析建议
-- **AI 单题分析（练习页）**：练习提交后或背题模式下触发，AI 独立判断参考答案并与题库对照，标注置信度和需要人工确认的标记
+- **AI 解析（Web + 原生）**：AI 自动生成题目解析，适合补全缺解析的题目。Web 端在导入预览中一键生成，逐条预览后按需采纳
+- **AI 单题分析（Web + 原生）**：练习提交后触发，AI 独立判断参考答案并与题库对照，标注置信度
+- **AI 核对（原生版）**：导入结果可发送至 AI 自动校验题型、答案和解析
+- **AI 补解析（原生版编辑器）**：题库编辑/审阅/导入预览/快速编辑四个入口统一集成
 - 支持 DeepSeek、OpenAI 兼容接口和自定义接口，可配置 API 地址、API Key 与模型名称
-- 支持仅处理异常题、控制单批处理数量、超时时间和保存阈值
+- Web 端 AI 配置在「设置/导出」页面，配置后即可使用
 - **AI 结果仅作参考，不会自动修改题库答案或解析。**
 
 ### 视觉与体验（原生版）
@@ -172,7 +172,7 @@ Android 工程通过 `productFlavors` 保留历史 WebView 壳与当前原生版
 
 ### Web 端快速上手
 
-1. 打开 `apps/web/index.html`，或访问 [在线版](https://reiqr.github.io/misaka-quiz)。
+1. 打开 `apps/web/index.html`，或访问 [在线版](https://misaka-666.github.io/Misaka-quiz/apps/web/)。
 2. 进入 **导入题库**，粘贴文本或上传文件。
 3. 系统自动识别题型、选项、答案和解析。
 4. 在识别预览中确认题目无误。
@@ -296,7 +296,7 @@ npx serve apps/web
 在线版：
 
 ```text
-https://reiqr.github.io/misaka-quiz
+https://misaka-666.github.io/Misaka-quiz/apps/web/
 ```
 
 ### Android 端
@@ -361,18 +361,15 @@ cd test\native-parser-regression
 
 下载入口：
 
-- [GitHub Releases](https://github.com/reiqr/misaka-quiz/releases)
-- [在线体验](https://reiqr.github.io/misaka-quiz)
+- [GitHub Releases](https://github.com/Misaka-666/Misaka-quiz/releases)
+- [在线体验](https://misaka-666.github.io/Misaka-quiz/apps/web/)
 
-最新版本请以 [GitHub Releases](https://github.com/reiqr/misaka-quiz/releases) 为准。当前仓库文档记录的主要版本线为：
+最新版本请以 [GitHub Releases](https://github.com/Misaka-666/Misaka-quiz/releases) 为准。当前仓库文档记录的主要版本线为：
 
-- 统一发布版：**v2.6.3-beta**
-- Web 版：**v0.7.5-alpha**
-- 原生 Compose 版：**v0.8.9-native**
+- Web 版：**V35 (Misaka 定制版)**，新增 AI 解析 + AI 单题分析
+- 原生 Compose 版：**v0.8.9-native**（上游版本）
 
-`v0.8.x-native` 近期原生版重点：**多空填空题全链路**（解析/练习/考试/搜索/编辑，含内联多空结构与分区多空继承）；**CodeLikeTextGuard 代码表达式守卫**；**分组练习范围**（跨题库出题）；路由系统升级（子页面回退到上级）；系统返回键支持；图片选项识别；招聘答案清理；DOCX紧凑选项修复；判分归一化双端对齐；考试状态标签单行布局。早期阶段已完成导入解析器重构、JSON多格式导入、选项打乱、AI分析与补解析、错题作用域、填空/简答判分、题目搜索、分组管理、LaTeX识别、智能复习、跨端互通等能力。
-
-每次发布包含 Android APK 及相关说明文档。
+本 fork 主要维护 Web 端增强。原生版 APK 请参见上游 [Releases](https://github.com/reiqr/shiroha-quiz/releases)。
 
 > **当前为 beta 测试阶段，功能尚在完善中，不建议用于高风险正式考试场景。**
 
@@ -380,7 +377,7 @@ cd test\native-parser-regression
 
 ## 开发计划
 
-历史开发计划已归档至 `docs/archive/`，当前功能状态以本 README、[CHANGELOG](./CHANGELOG.md)、[GitHub Releases](https://github.com/reiqr/misaka-quiz/releases) 和 [原生 Android 开发进度](docs/native/原生开发进度.md) 为准。
+历史开发计划已归档至 `docs/archive/`，当前功能状态以本 README、[CHANGELOG](./CHANGELOG.md)、[GitHub Releases](https://github.com/Misaka-666/Misaka-quiz/releases) 和 [原生 Android 开发进度](docs/native/原生开发进度.md) 为准。
 
 开发与维护文档入口：
 
@@ -393,7 +390,7 @@ cd test\native-parser-regression
 
 ## 参与贡献 / 提交反馈
 
-欢迎通过 [Issue](https://github.com/reiqr/misaka-quiz/issues/new/choose) 提交，仓库提供了 **Bug 报告** 和 **功能建议** 两种模板：
+欢迎通过 [Issue](https://github.com/Misaka-666/Misaka-quiz/issues/new/choose) 提交，仓库提供了 **Bug 报告** 和 **功能建议** 两种模板：
 
 - Bug 反馈
 - 题库格式兼容问题
