@@ -585,8 +585,8 @@ object MisakaAiClient {
                     val choices = parsed.optJSONArray("choices") ?: continue
                     val first = choices.optJSONObject(0) ?: continue
                     val delta = first.optJSONObject("delta") ?: continue
-                    val reasoning = delta.optString("reasoning_content").orEmpty()
-                    val contentChunk = delta.optString("content").orEmpty()
+                    val reasoning = delta.optString("reasoning_content", "").takeIf { it != "null" }.orEmpty()
+                    val contentChunk = delta.optString("content", "").takeIf { it != "null" }.orEmpty()
                     if (reasoning.isNotBlank()) callback.onReasoning(reasoning)
                     if (contentChunk.isNotBlank()) {
                         contentBuilder.append(contentChunk)
