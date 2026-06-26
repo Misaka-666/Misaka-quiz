@@ -1,5 +1,6 @@
 package com.yiqiu.misakaquiz.ai
 
+import android.content.Context
 import com.yiqiu.misakaquiz.importer.model.MultiBlankSupport
 import com.yiqiu.misakaquiz.importer.model.Option
 import com.yiqiu.misakaquiz.importer.model.Question
@@ -105,6 +106,32 @@ interface AiStreamCallback {
 }
 
 object MisakaAiClient {
+    val bankAnalysisCache = mutableMapOf<String, AiBankAnalysis>()
+    private const val PREFS_NAME = "misaka_ai_cache"
+    private const val KEY_BANK_ANALYSIS_PREFIX = "ai_bank_analysis_"
+
+    fun loadBankAnalysis(context: Context, bankId: String): AiBankAnalysis? {
+        bankAnalysisCache[bankId]?.let { return it }
+        val raw = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_BANK_ANALYSIS_PREFIX + bankId, null) ?: return null
+        return runCatching { parseBankAnalysis(raw) }.getOrNull()?.also {
+            bankAnalysisCache[bankId] = it
+        }
+    }
+
+    fun saveBankAnalysis(context: Context, bankId: String, rawJson: String) {
+        val parsed = runCatching { parseBankAnalysis(rawJson) }.getOrNull() ?: return
+        bankAnalysisCache[bankId] = parsed
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit().putString(KEY_BANK_ANALYSIS_PREFIX + bankId, rawJson).apply()
+    }
+
+    fun clearBankAnalysis(context: Context, bankId: String) {
+        bankAnalysisCache.remove(bankId)
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit().remove(KEY_BANK_ANALYSIS_PREFIX + bankId).apply()
+    }
+
     fun testConnection(
         apiBaseUrl: String,
         apiKey: String,
