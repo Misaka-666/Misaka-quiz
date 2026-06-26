@@ -164,12 +164,14 @@ object QuizRepository {
     const val WRONG_BOOK_SCOPE_ALL_BANKS = "all_banks"
     const val PRACTICE_SCOPE_BANK = "BANK"
     const val PRACTICE_SCOPE_GROUP = "GROUP"
+    const val PRACTICE_SCOPE_MULTI = "MULTI"
 
     private const val PREFS_NAME = "misaka_quiz_native"
     private const val KEY_BANKS = "banks"
     private const val KEY_ACTIVE_BANK_ID = "active_bank_id"
     private const val KEY_PRACTICE_SCOPE_TYPE = "practice_scope_type"
     private const val KEY_PRACTICE_SCOPE_VALUE = "practice_scope_value"
+    private const val KEY_PRACTICE_SCOPE_BANK_IDS = "practice_scope_bank_ids"
     private const val KEY_WRONG_BOOK = "wrong_book"
     private const val KEY_SLASHED_QUESTIONS = "slashed_questions"
     private const val KEY_FAVORITE_QUESTIONS = "favorite_questions"
@@ -237,6 +239,8 @@ object QuizRepository {
     var practiceScopeType by mutableStateOf(PRACTICE_SCOPE_BANK)
         private set
     var practiceScopeValue by mutableStateOf("")
+        private set
+    var practiceScopeBankIds by mutableStateOf<Set<String>>(emptySet())
         private set
     var practiceQuestions by mutableStateOf<List<Question>>(emptyList())
         private set
@@ -486,6 +490,8 @@ object QuizRepository {
             ?: sanitizedRestoredBanks.firstOrNull()?.id
         practiceScopeType = normalizePracticeScopeType(prefs.getString(KEY_PRACTICE_SCOPE_TYPE, PRACTICE_SCOPE_BANK))
         practiceScopeValue = prefs.getString(KEY_PRACTICE_SCOPE_VALUE, activeBankId.orEmpty()).orEmpty()
+        practiceScopeBankIds = prefs.getString(KEY_PRACTICE_SCOPE_BANK_IDS, "")?.split(",")
+            ?.map { it.trim() }?.filter { it.isNotBlank() }?.toSet().orEmpty()
         ensureValidPracticeScope()
         practiceNextRequiresResult = prefs.getBoolean(KEY_PRACTICE_NEXT_REQUIRES_RESULT, false)
         rememberPracticeSettingsEnabled = prefs.getBoolean(KEY_REMEMBER_PRACTICE_SETTINGS, true)
@@ -654,6 +660,17 @@ object QuizRepository {
         return true
     }
 
+    fun setPracticeMultiBankScope(context: Context, bankIds: Set<String>): Boolean {
+        appContext = context.applicationContext
+        val validIds = bankIds.filter { id -> banks.any { it.id == id } }.toSet()
+        if (validIds.isEmpty()) return false
+        practiceScopeType = PRACTICE_SCOPE_MULTI
+        practiceScopeValue = ""
+        practiceScopeBankIds = validIds
+        persist()
+        return true
+    }
+
     fun deleteBank(context: Context, bankId: String) {
         appContext = context.applicationContext
         val removingBank = banks.firstOrNull { it.id == bankId } ?: return
@@ -666,6 +683,9 @@ object QuizRepository {
         practiceSequentialProgress.remove(bankId)
         practiceSequentialProgress.remove("BANK:$bankId")
         studyRecords.removeAll { it.bankId == bankId }
+        if (bankId in practiceScopeBankIds) {
+            practiceScopeBankIds = practiceScopeBankIds - bankId
+        }
 
         if (removingActive || banks.none { it.id == activeBankId }) {
             activeBankId = banks.firstOrNull()?.id
@@ -890,39 +910,41 @@ object QuizRepository {
 
     fun currentPracticeScopeKey(): String {
         ensureValidPracticeScope()
-        return if (practiceScopeType == PRACTICE_SCOPE_GROUP) {
-            "GROUP:${normalizeBankGroupName(practiceScopeValue)}"
-        } else {
-            "BANK:${currentPracticeScopeBank()?.id.orEmpty()}"
+        return when (practiceScopeType) {
+            PRACTICE_SCOPE_GROUP -> "GROUP:${normalizeBankGroupName(practiceScopeValue)}"
+            PRACTICE_SCOPE_MULTI -> "MULTI:${practiceScopeBankIds.sorted().joinToString(",")}"
+            else -> "BANK:${currentPracticeScopeBank()?.id.orEmpty()}"
         }
     }
 
     fun currentPracticeScopeLabel(): String {
         ensureValidPracticeScope()
-        return if (practiceScopeType == PRACTICE_SCOPE_GROUP) {
-            normalizeBankGroupName(practiceScopeValue)
-        } else {
-            currentPracticeScopeBank()?.name ?: "当前题库"
+        return when (practiceScopeType) {
+            PRACTICE_SCOPE_GROUP -> normalizeBankGroupName(practiceScopeValue)
+            PRACTICE_SCOPE_MULTI -> "${practiceScopeBankIds.size} 个题库"
+            else -> currentPracticeScopeBank()?.name ?: "当前题库"
         }
     }
 
     fun currentPracticeScopeSummary(): String {
         val scopeBanks = currentPracticeScopeBanks()
         val total = scopeBanks.sumOf { bank -> bank.questions.count { !isQuestionSlashed(bank.id, it) } }
-        return if (practiceScopeType == PRACTICE_SCOPE_GROUP) {
-            "${scopeBanks.size} 个题库 · $total 题"
-        } else {
-            "$total 题"
+        return when (practiceScopeType) {
+            PRACTICE_SCOPE_GROUP -> "${scopeBanks.size} 个题库 · $total 题"
+            PRACTICE_SCOPE_MULTI -> "$total 题"
+            else -> "$total 题"
         }
     }
 
     fun currentPracticeScopeBanks(): List<QuizBank> {
         ensureValidPracticeScope()
-        return if (practiceScopeType == PRACTICE_SCOPE_GROUP) {
-            val cleanGroup = normalizeBankGroupName(practiceScopeValue)
-            banks.filter { normalizeBankGroupName(it.groupName) == cleanGroup }
-        } else {
-            listOfNotNull(currentPracticeScopeBank())
+        return when (practiceScopeType) {
+            PRACTICE_SCOPE_GROUP -> {
+                val cleanGroup = normalizeBankGroupName(practiceScopeValue)
+                banks.filter { normalizeBankGroupName(it.groupName) == cleanGroup }
+            }
+            PRACTICE_SCOPE_MULTI -> banks.filter { it.id in practiceScopeBankIds }
+            else -> listOfNotNull(currentPracticeScopeBank())
         }
     }
 
@@ -3904,6 +3926,12 @@ object QuizRepository {
                 practiceScopeValue = cleanGroup
                 return
             }
+        } else if (practiceScopeType == PRACTICE_SCOPE_MULTI) {
+            val validIds = practiceScopeBankIds.filter { id -> banks.any { it.id == id } }.toSet()
+            if (validIds.isNotEmpty()) {
+                practiceScopeBankIds = validIds
+                return
+            }
         } else if (banks.any { it.id == practiceScopeValue }) {
             return
         }
@@ -4125,6 +4153,7 @@ object QuizRepository {
             .putString(KEY_ACTIVE_BANK_ID, activeBankId)
             .putString(KEY_PRACTICE_SCOPE_TYPE, practiceScopeType)
             .putString(KEY_PRACTICE_SCOPE_VALUE, practiceScopeValue)
+            .putString(KEY_PRACTICE_SCOPE_BANK_IDS, practiceScopeBankIds.joinToString(","))
             .putString(KEY_WRONG_BOOK, wrongBookToJson(wrongBook))
             .putString(KEY_SLASHED_QUESTIONS, slashedQuestionsToJson(slashedQuestions))
             .putString(KEY_FAVORITE_QUESTIONS, favoriteQuestionsToJson(favoriteQuestions))

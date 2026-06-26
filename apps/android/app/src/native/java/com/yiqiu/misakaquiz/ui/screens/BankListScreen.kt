@@ -22,6 +22,7 @@ import androidx.compose.material.icons.rounded.Done
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.AlertDialog
@@ -323,6 +324,18 @@ fun BankListScreen(
                             mergeTargetNames = ""
                             mergeTargetGroup = DEFAULT_BANK_GROUP_NAME
                             showMergeDialog = true
+                        }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    ActionPillButton(
+                        icon = Icons.Rounded.PlayArrow,
+                        text = "设为练习范围",
+                        primary = selectedCount >= 1,
+                        modifier = Modifier.height(40.dp),
+                        enabled = selectedCount >= 1,
+                        onClick = {
+                            QuizRepository.setPracticeMultiBankScope(context, selectedBankIds)
+                            selectedBankIds = emptySet()
                         }
                     )
                     Spacer(Modifier.width(8.dp))
