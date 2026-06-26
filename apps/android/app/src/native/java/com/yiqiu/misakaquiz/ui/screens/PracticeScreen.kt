@@ -643,6 +643,48 @@ fun PracticeScreen(
             }
         }
 
+        // Free-form "问AI" state
+        var freeAskInput by remember(currentSessionKey) { mutableStateOf("") }
+        var freeAskResponse by remember(currentSessionKey) { mutableStateOf<String?>(null) }
+        var freeAskError by remember(currentSessionKey) { mutableStateOf<String?>(null) }
+        var isFreeAskLoading by remember(currentSessionKey) { mutableStateOf(false) }
+        val runFreeAsk: (String) -> Unit = { userQuestion ->
+            if (!QuizRepository.isAiConfigured()) {
+                freeAskError = "请先在 我的 → AI 设置 中配置 AI 接口。"
+            } else if (userQuestion.isBlank()) {
+                freeAskError = "请输入问题。"
+            } else if (isFreeAskLoading) {
+                // already loading, no-op
+            } else {
+                isFreeAskLoading = true
+                freeAskError = null
+                freeAskResponse = null
+                autoNextScope.launch {
+                    val aiQuestion = practiceQuestionForDisplay(question, displayOptions)
+                    val result = runCatching {
+                        withContext(Dispatchers.IO) {
+                            MisakaAiClient.freeAsk(
+                                apiBaseUrl = QuizRepository.aiApiBaseUrl,
+                                apiKey = QuizRepository.aiApiKey,
+                                modelName = QuizRepository.aiModelName,
+                                question = aiQuestion,
+                                userQuestion = userQuestion,
+                                timeoutSeconds = QuizRepository.aiTimeoutSeconds
+                            )
+                        }
+                    }
+                    result.onSuccess { answer ->
+                        freeAskResponse = answer.trim().ifBlank { "AI 未返回有效回答。" }
+                        freeAskError = null
+                    }.onFailure { error ->
+                        freeAskResponse = null
+                        freeAskError = error.message ?: "提问失败，请检查接口配置或网络。"
+                    }
+                    isFreeAskLoading = false
+                }
+            }
+        }
+
         val questionCardModifier = if (QuizRepository.swipeNavigationEnabled) {
             Modifier.questionSwipeNavigation(
                 onSwipeLeft = {
@@ -1065,6 +1107,20 @@ fun PracticeScreen(
                         error = singleQuestionAiError,
                         loading = isSingleQuestionAiLoading,
                         onAnalyze = runSingleQuestionAiAnalysis
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    FreeAskPanel(
+                        input = freeAskInput,
+                        onInputChange = { freeAskInput = it },
+                        response = freeAskResponse,
+                        error = freeAskError,
+                        loading = isFreeAskLoading,
+                        onSend = { question ->
+                            if (question.isNotBlank()) {
+                                freeAskInput = ""
+                                runFreeAsk(question)
+                            }
+                        }
                     )
                 }
             }
@@ -2839,6 +2895,103 @@ private fun formatAnalysisForDisplay(analysis: String): String {
         .replace(Regex("\\s*(?=([A-GＡ-Ｇ])项[，,：:])"), "\n")
         .replace(Regex("\n{3,}"), "\n\n")
         .trim()
+}
+
+@Composable
+private fun FreeAskPanel(
+    input: String,
+    onInputChange: (String) -> Unit,
+    response: String?,
+    error: String?,
+    loading: Boolean,
+    onSend: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Collapsed: show a compact trigger button
+        if (!expanded) {
+            ActionPillButton(
+                icon = Icons.Rounded.AutoAwesome,
+                text = "问 AI",
+                primary = false,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(42.dp),
+                fillWidthContent = true,
+                onClick = { expanded = true }
+            )
+        }
+
+        // Expanded: show input + send + result
+        if (expanded) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = onInputChange,
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("追问当前题目…", style = MaterialTheme.typography.bodySmall) },
+                    singleLine = true,
+                    enabled = !loading,
+                    textStyle = MaterialTheme.typography.bodyMedium,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    shape = RoundedCornerShape(MisakaRadius.Md)
+                )
+                ActionPillButton(
+                    icon = Icons.Rounded.PlayArrow,
+                    text = if (loading) "..." else "发送",
+                    primary = true,
+                    enabled = !loading && input.isNotBlank(),
+                    modifier = Modifier.height(42.dp),
+                    onClick = { onSend(input) }
+                )
+            }
+
+            // Collapse link
+            TextButton(onClick = { expanded = false }) {
+                Text("收起", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
+        // Result / error when expanded
+        if (expanded) {
+            if (loading) {
+                NoticeCard("AI 正在思考中，请稍候。", warning = false)
+            }
+            error?.takeIf { it.isNotBlank() }?.let { message ->
+                NoticeCard("提问失败：$message", warning = true)
+            }
+            response?.takeIf { it.isNotBlank() }?.let { text ->
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(MisakaRadius.Lg),
+                    color = MisakaColors.CardWhite68,
+                    border = BorderStroke(MisakaDimens.Hairline, MisakaColors.LineSoft)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "AI 回答",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = text,
+                            style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 23.sp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 private data class PracticeDisplayOption(

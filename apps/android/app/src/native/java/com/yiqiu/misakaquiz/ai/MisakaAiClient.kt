@@ -154,6 +154,41 @@ object MisakaAiClient {
         return parseSingleQuestionAnalysis(content, question.id)
     }
 
+    fun freeAsk(
+        apiBaseUrl: String,
+        apiKey: String,
+        modelName: String,
+        question: Question,
+        userQuestion: String,
+        timeoutSeconds: Int = DEFAULT_AI_TIMEOUT_SECONDS
+    ): String {
+        validateConfig(apiBaseUrl, apiKey, modelName)
+        require(userQuestion.trim().isNotBlank()) { "提问内容不能为空。" }
+        val questionContext = JSONObject()
+            .put("type", question.type.name.lowercase())
+            .put("question", question.question)
+            .put("options", JSONArray().also { arr ->
+                question.options.forEach { opt ->
+                    arr.put(JSONObject().put("key", opt.key).put("text", opt.text))
+                }
+            })
+            .put("answer", JSONArray().also { arr -> question.answer.forEach { arr.put(it) } })
+            .put("analysis", question.analysis)
+            .toString()
+        val userPayload = JSONObject()
+            .put("questionContext", JSONObject(questionContext))
+            .put("userQuestion", userQuestion.trim())
+            .toString()
+        return requestChatCompletion(
+            apiBaseUrl = apiBaseUrl,
+            apiKey = apiKey,
+            modelName = modelName,
+            systemPrompt = AiPrompts.AI_FREE_ASK_SYSTEM_PROMPT,
+            userPayload = userPayload,
+            timeoutSeconds = timeoutSeconds.coerceIn(15, 180)
+        )
+    }
+
     fun refactorQuestions(
         apiBaseUrl: String,
         apiKey: String,
