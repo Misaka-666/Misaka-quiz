@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
@@ -23,9 +24,12 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -39,6 +43,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -48,17 +54,26 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.yiqiu.misakaquiz.importer.model.QuestionType
 import com.yiqiu.misakaquiz.state.DEFAULT_BANK_GROUP_NAME
 import com.yiqiu.misakaquiz.state.QuizBank
+import com.yiqiu.misakaquiz.ai.AiBankAnalysis
+import com.yiqiu.misakaquiz.ai.MisakaAiClient
 import com.yiqiu.misakaquiz.state.QuizRepository
 import com.yiqiu.misakaquiz.ui.components.ActionPillButton
 import com.yiqiu.misakaquiz.ui.components.GlassCard
 import com.yiqiu.misakaquiz.ui.components.MisakaDangerConfirmDialog
 import com.yiqiu.misakaquiz.ui.components.MisakaHeader
+import com.yiqiu.misakaquiz.ui.components.NoticeCard
 import com.yiqiu.misakaquiz.ui.components.StatusChip
 import com.yiqiu.misakaquiz.ui.components.misakaNoRippleClickable
 import com.yiqiu.misakaquiz.ui.theme.MisakaColors
+import com.yiqiu.misakaquiz.ui.theme.MisakaDimens
 import com.yiqiu.misakaquiz.ui.theme.MisakaRadius
 import com.yiqiu.misakaquiz.ui.theme.MisakaSpacing
 import com.yiqiu.misakaquiz.ui.util.bankDisplayPath
@@ -476,6 +491,11 @@ private fun BankCard(
     val judgeCount = bank.questions.count { it.type == QuestionType.JUDGE }
     val subjectiveCount = bank.questions.count { it.type == QuestionType.BLANK || it.type == QuestionType.SHORT }
     var moreMenuExpanded by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var analyzing by remember { mutableStateOf(false) }
+    var analysisError by remember { mutableStateOf<String?>(null) }
+    var analysisResult by remember { mutableStateOf<AiBankAnalysis?>(null) }
+    var showAnalysisDialog by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier
@@ -575,6 +595,43 @@ private fun BankCard(
                             }
                         )
                         DropdownMenuItem(
+                            text = { Text("AI 分析题库") },
+                            leadingIcon = { Icon(Icons.Rounded.AutoAwesome, contentDescription = null) },
+                            onClick = {
+                                moreMenuExpanded = false
+                                analyzing = true
+                                analysisError = null
+                                analysisResult = null
+                                showAnalysisDialog = true
+                                scope.launch {
+                                    try {
+                                        val baseUrl = QuizRepository.aiApiBaseUrl.trim()
+                                        val key = QuizRepository.aiApiKey.trim()
+                                        val model = QuizRepository.aiModelName.trim()
+                                        if (baseUrl.isBlank() || key.isBlank() || model.isBlank()) {
+                                            analysisError = "请先在「我的」中配置 AI 接口。"
+                                            return@launch
+                                        }
+                                        val result = withContext(Dispatchers.IO) {
+                                            MisakaAiClient.analyzeBank(
+                                                apiBaseUrl = baseUrl,
+                                                apiKey = key,
+                                                modelName = model,
+                                                questions = bank.questions,
+                                                bankName = bank.name,
+                                                timeoutSeconds = 120
+                                            )
+                                        }
+                                        analysisResult = result
+                                    } catch (e: Exception) {
+                                        analysisError = e.message ?: "AI 分析失败"
+                                    } finally {
+                                        analyzing = false
+                                    }
+                                }
+                            }
+                        )
+                        DropdownMenuItem(
                             text = { Text("删除题库") },
                             leadingIcon = { Icon(Icons.Rounded.DeleteOutline, contentDescription = null) },
                             onClick = {
@@ -582,6 +639,201 @@ private fun BankCard(
                                 onDelete()
                             }
                         )
+                    }
+                }
+            }
+        }
+
+        if (showAnalysisDialog) {
+            AiBankAnalysisDialog(
+                bankName = bank.name,
+                analyzing = analyzing,
+                error = analysisError,
+                result = analysisResult,
+                onDismiss = {
+                    showAnalysisDialog = false
+                    analysisError = null
+                    analysisResult = null
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AiBankAnalysisDialog(
+    bankName: String,
+    analyzing: Boolean,
+    error: String?,
+    result: AiBankAnalysis?,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(MisakaRadius.Xl),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "AI 题库分析",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = onDismiss) {
+                        Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                    }
+                }
+                Text(
+                    text = bankName,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.height(16.dp))
+
+                if (analyzing) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        CircularProgressIndicator()
+                        Spacer(Modifier.height(12.dp))
+                        Text("正在分析题库，通常需要 20–60 秒...", style = MaterialTheme.typography.bodyMedium)
+                    }
+                } else if (error != null) {
+                    NoticeCard(text = error, warning = true)
+                } else if (result != null) {
+                    // Overview
+                    Text("概述", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(6.dp))
+                    Text(result.overview, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(16.dp))
+
+                    // Clusters
+                    if (result.clusters.isNotEmpty()) {
+                        Text("知识点聚类", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(8.dp))
+                        result.clusters.forEach { cluster ->
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(MisakaRadius.Md),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                tonalElevation = 0.dp
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Rounded.AutoAwesome,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            "【${cluster.topic}】${cluster.questionNumbers.joinToString("、")}",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                    if (cluster.reason.isNotBlank()) {
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(cluster.reason, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(6.dp))
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+
+                    // Confusing Pairs
+                    if (result.confusingPairs.isNotEmpty()) {
+                        Text("易混淆题对", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(8.dp))
+                        result.confusingPairs.forEach { pair ->
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(MisakaRadius.Md),
+                                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                                tonalElevation = 0.dp
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        "题 ${pair.questionA} ↔ 题 ${pair.questionB}",
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                    if (pair.reason.isNotBlank()) {
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(pair.reason, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(6.dp))
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+
+                    // Progressions
+                    if (result.progressions.isNotEmpty()) {
+                        Text("知识递进链", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(8.dp))
+                        result.progressions.forEach { prog ->
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(MisakaRadius.Md),
+                                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                                tonalElevation = 0.dp
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        prog.chain.joinToString(" → "),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    if (prog.description.isNotBlank()) {
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(prog.description, style = MaterialTheme.typography.bodySmall)
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(6.dp))
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+
+                    // Memory Tips
+                    if (result.memoryTips.isNotEmpty()) {
+                        Text("记忆技巧", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(8.dp))
+                        result.memoryTips.forEachIndexed { index, tip ->
+                            Row(modifier = Modifier.padding(vertical = 2.dp)) {
+                                Text("${index + 1}. ", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                Text(tip, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+
+                    // Review Strategy
+                    if (result.reviewStrategy.isNotBlank()) {
+                        Text("复习策略", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(6.dp))
+                        Text(result.reviewStrategy, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }

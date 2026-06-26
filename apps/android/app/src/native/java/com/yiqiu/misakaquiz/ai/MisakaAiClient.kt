@@ -60,6 +60,32 @@ data class AiRefactorResult(
     val notes: List<String>
 )
 
+data class AiBankAnalysis(
+    val overview: String,
+    val clusters: List<AiBankCluster>,
+    val confusingPairs: List<AiConfusingPair>,
+    val progressions: List<AiProgression>,
+    val memoryTips: List<String>,
+    val reviewStrategy: String
+)
+
+data class AiBankCluster(
+    val topic: String,
+    val questionNumbers: List<String>,
+    val reason: String
+)
+
+data class AiConfusingPair(
+    val questionA: String,
+    val questionB: String,
+    val reason: String
+)
+
+data class AiProgression(
+    val chain: List<String>,
+    val description: String
+)
+
 object MisakaAiClient {
     fun testConnection(
         apiBaseUrl: String,
@@ -187,6 +213,50 @@ object MisakaAiClient {
             userPayload = userPayload,
             timeoutSeconds = timeoutSeconds.coerceIn(15, 180)
         )
+    }
+
+    fun analyzeBank(
+        apiBaseUrl: String,
+        apiKey: String,
+        modelName: String,
+        questions: List<Question>,
+        bankName: String,
+        timeoutSeconds: Int = 120
+    ): AiBankAnalysis {
+        validateConfig(apiBaseUrl, apiKey, modelName)
+        require(questions.isNotEmpty()) { "题库为空" }
+        val maxQuestions = 200
+        val truncated = if (questions.size > maxQuestions) {
+            questions.sortedBy { it.number }.take(maxQuestions)
+        } else {
+            questions.sortedBy { it.number }
+        }
+        val note = if (questions.size > maxQuestions) {
+            "（题库共 ${questions.size} 题，已按题号排序取前 $maxQuestions 题供分析）"
+        } else {
+            ""
+        }
+        val content = requestChatCompletion(
+            apiBaseUrl = apiBaseUrl,
+            apiKey = apiKey,
+            modelName = modelName,
+            systemPrompt = AiPrompts.AI_BANK_ANALYSIS_SYSTEM_PROMPT,
+            userPayload = JSONObject()
+                .put("bankName", bankName)
+                .put("totalCount", questions.size)
+                .put("note", note)
+                .put("questionTypes", JSONObject().apply {
+                    put("single", questions.count { it.type.name == "SINGLE" })
+                    put("multiple", questions.count { it.type.name == "MULTIPLE" })
+                    put("judge", questions.count { it.type.name == "JUDGE" })
+                    put("blank", questions.count { it.type.name == "BLANK" })
+                    put("short", questions.count { it.type.name == "SHORT" })
+                })
+                .put("questions", questionsToJson(truncated))
+                .toString(),
+            timeoutSeconds = timeoutSeconds.coerceIn(30, 300)
+        )
+        return parseBankAnalysis(content)
     }
 
     fun refactorQuestions(
@@ -645,5 +715,50 @@ object MisakaAiClient {
                 )
             )
             .put("notes", JSONArray().put("重构说明和需要人工确认的点"))
+    }
+
+    private fun parseBankAnalysis(content: String): AiBankAnalysis {
+        val root = JSONObject(extractJsonObject(content))
+        val clustersJson = root.optJSONArray("clusters") ?: JSONArray()
+        val clusters = (0 until clustersJson.length()).mapNotNull { i ->
+            val item = clustersJson.optJSONObject(i) ?: return@mapNotNull null
+            val numbersJson = item.optJSONArray("questionNumbers") ?: JSONArray()
+            val numbers = (0 until numbersJson.length()).map { numbersJson.optString(it).trim() }.filter { it.isNotBlank() }
+            AiBankCluster(
+                topic = item.optString("topic").trim().ifBlank { "未命名分组" },
+                questionNumbers = numbers,
+                reason = item.optString("reason").trim()
+            )
+        }
+        val pairsJson = root.optJSONArray("confusingPairs") ?: JSONArray()
+        val confusingPairs = (0 until pairsJson.length()).mapNotNull { i ->
+            val item = pairsJson.optJSONObject(i) ?: return@mapNotNull null
+            AiConfusingPair(
+                questionA = item.optString("questionA").trim(),
+                questionB = item.optString("questionB").trim(),
+                reason = item.optString("reason").trim()
+            )
+        }
+        val progressionsJson = root.optJSONArray("progressions") ?: JSONArray()
+        val progressions = (0 until progressionsJson.length()).mapNotNull { i ->
+            val item = progressionsJson.optJSONObject(i) ?: return@mapNotNull null
+            val chainJson = item.optJSONArray("chain") ?: JSONArray()
+            val chain = (0 until chainJson.length()).map { chainJson.optString(it).trim() }.filter { it.isNotBlank() }
+            if (chain.size < 2) return@mapNotNull null
+            AiProgression(
+                chain = chain,
+                description = item.optString("description").trim()
+            )
+        }
+        val tipsJson = root.optJSONArray("memoryTips") ?: JSONArray()
+        val memoryTips = (0 until tipsJson.length()).map { tipsJson.optString(it).trim() }.filter { it.isNotBlank() }
+        return AiBankAnalysis(
+            overview = root.optString("overview").trim().ifBlank { "AI 没有返回概述。" },
+            clusters = clusters,
+            confusingPairs = confusingPairs,
+            progressions = progressions,
+            memoryTips = memoryTips,
+            reviewStrategy = root.optString("reviewStrategy").trim().ifBlank { "暂无特别建议。" }
+        )
     }
 }
