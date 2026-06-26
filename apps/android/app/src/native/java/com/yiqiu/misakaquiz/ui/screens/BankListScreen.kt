@@ -27,6 +27,7 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.AlertDialog
@@ -43,6 +44,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
@@ -739,8 +741,9 @@ private fun AiBankAnalysisDialog(
                         var reasoningExpanded by remember { mutableStateOf(false) }
                         val reasoningScroll = rememberScrollState()
                         val displayText = if (reasoningExpanded) streamReasoning else streamReasoning.takeLast(600)
-                        LaunchedEffect(streamReasoning) {
-                            reasoningScroll.animateScrollTo(reasoningScroll.maxValue)
+                        LaunchedEffect(Unit) {
+                            snapshotFlow { streamReasoning }
+                                .collect { reasoningScroll.animateScrollTo(reasoningScroll.maxValue) }
                         }
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
@@ -765,7 +768,7 @@ private fun AiBankAnalysisDialog(
                                         modifier = Modifier.align(Alignment.CenterHorizontally)
                                     ) {
                                         Icon(
-                                            if (reasoningExpanded) Icons.Rounded.ExpandMore else Icons.Rounded.ExpandMore,
+                                            if (reasoningExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                                             contentDescription = null,
                                             modifier = Modifier.size(16.dp)
                                         )
