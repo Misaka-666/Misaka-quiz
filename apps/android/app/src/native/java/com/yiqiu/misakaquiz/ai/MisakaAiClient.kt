@@ -98,6 +98,12 @@ data class AiEntityAppearance(
     val knowledgePoint: String
 )
 
+interface AiStreamCallback {
+    fun onReasoning(chunk: String)
+    fun onContent(chunk: String)
+    fun onDone(fullContent: String)
+}
+
 object MisakaAiClient {
     fun testConnection(
         apiBaseUrl: String,
@@ -166,6 +172,34 @@ object MisakaAiClient {
         return parseAnalysisSuggestions(content)
     }
 
+    fun generateAnalysisStreaming(
+        apiBaseUrl: String,
+        apiKey: String,
+        modelName: String,
+        questions: List<Question>,
+        callback: AiStreamCallback,
+        timeoutSeconds: Int = DEFAULT_AI_TIMEOUT_SECONDS
+    ) {
+        validateConfig(apiBaseUrl, apiKey, modelName)
+        if (questions.isEmpty()) {
+            callback.onDone("")
+            return
+        }
+        requestStreamCompletion(
+            apiBaseUrl = apiBaseUrl,
+            apiKey = apiKey,
+            modelName = modelName,
+            systemPrompt = AiPrompts.AI_ANALYSIS_SYSTEM_PROMPT,
+            userPayload = JSONObject()
+                .put("task", "generate_analysis")
+                .put("outputFormat", analysisOutputContract())
+                .put("questions", questionsToJson(questions))
+                .toString(),
+            timeoutSeconds = timeoutSeconds.coerceIn(15, 180),
+            callback = callback
+        )
+    }
+
     fun analyzeSingleQuestion(
         apiBaseUrl: String,
         apiKey: String,
@@ -227,6 +261,43 @@ object MisakaAiClient {
         )
     }
 
+    fun freeAskStreaming(
+        apiBaseUrl: String,
+        apiKey: String,
+        modelName: String,
+        question: Question,
+        userQuestion: String,
+        callback: AiStreamCallback,
+        timeoutSeconds: Int = DEFAULT_AI_TIMEOUT_SECONDS
+    ) {
+        validateConfig(apiBaseUrl, apiKey, modelName)
+        require(userQuestion.trim().isNotBlank()) { "提问内容不能为空。" }
+        val questionContext = JSONObject()
+            .put("type", question.type.name.lowercase())
+            .put("question", question.question)
+            .put("options", JSONArray().also { arr ->
+                question.options.forEach { opt ->
+                    arr.put(JSONObject().put("key", opt.key).put("text", opt.text))
+                }
+            })
+            .put("answer", JSONArray().also { arr -> question.answer.forEach { arr.put(it) } })
+            .put("analysis", question.analysis)
+            .toString()
+        val userPayload = JSONObject()
+            .put("questionContext", JSONObject(questionContext))
+            .put("userQuestion", userQuestion.trim())
+            .toString()
+        requestStreamCompletion(
+            apiBaseUrl = apiBaseUrl,
+            apiKey = apiKey,
+            modelName = modelName,
+            systemPrompt = AiPrompts.AI_FREE_ASK_SYSTEM_PROMPT,
+            userPayload = userPayload,
+            timeoutSeconds = timeoutSeconds.coerceIn(15, 180),
+            callback = callback
+        )
+    }
+
     fun analyzeBank(
         apiBaseUrl: String,
         apiKey: String,
@@ -269,6 +340,51 @@ object MisakaAiClient {
             timeoutSeconds = timeoutSeconds.coerceIn(30, 300)
         )
         return parseBankAnalysis(content)
+    }
+
+    fun analyzeBankStreaming(
+        apiBaseUrl: String,
+        apiKey: String,
+        modelName: String,
+        questions: List<Question>,
+        bankName: String,
+        callback: AiStreamCallback,
+        timeoutSeconds: Int = 120
+    ) {
+        validateConfig(apiBaseUrl, apiKey, modelName)
+        require(questions.isNotEmpty()) { "题库为空" }
+        val maxQuestions = 200
+        val truncated = if (questions.size > maxQuestions) {
+            questions.sortedBy { it.number }.take(maxQuestions)
+        } else {
+            questions.sortedBy { it.number }
+        }
+        val note = if (questions.size > maxQuestions) {
+            "（题库共 ${questions.size} 题，已按题号排序取前 $maxQuestions 题供分析）"
+        } else {
+            ""
+        }
+        requestStreamCompletion(
+            apiBaseUrl = apiBaseUrl,
+            apiKey = apiKey,
+            modelName = modelName,
+            systemPrompt = AiPrompts.AI_BANK_ANALYSIS_SYSTEM_PROMPT,
+            userPayload = JSONObject()
+                .put("bankName", bankName)
+                .put("totalCount", questions.size)
+                .put("note", note)
+                .put("questionTypes", JSONObject().apply {
+                    put("single", questions.count { it.type.name == "SINGLE" })
+                    put("multiple", questions.count { it.type.name == "MULTIPLE" })
+                    put("judge", questions.count { it.type.name == "JUDGE" })
+                    put("blank", questions.count { it.type.name == "BLANK" })
+                    put("short", questions.count { it.type.name == "SHORT" })
+                })
+                .put("questions", questionsToJson(truncated))
+                .toString(),
+            timeoutSeconds = timeoutSeconds.coerceIn(30, 300),
+            callback = callback
+        )
     }
 
     fun refactorQuestions(
@@ -372,6 +488,98 @@ object MisakaAiClient {
             throw IllegalStateException("AI 网络请求失败：${error.message ?: "请检查接口地址和网络"}", error)
         } catch (error: JSONException) {
             throw IllegalStateException("AI 接口返回格式无法解析，请确认接口是否兼容 OpenAI chat/completions。", error)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun requestStreamCompletion(
+        apiBaseUrl: String,
+        apiKey: String,
+        modelName: String,
+        systemPrompt: String,
+        userPayload: String,
+        timeoutSeconds: Int,
+        callback: AiStreamCallback,
+        maxTokens: Int? = null
+    ) {
+        val endpoint = normalizeChatEndpoint(apiBaseUrl)
+        val timeoutMillis = timeoutSeconds.coerceIn(30, 300) * 1000
+        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = timeoutMillis.coerceAtMost(30000)
+            readTimeout = timeoutMillis
+            doOutput = true
+            useCaches = false
+            setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            setRequestProperty("Accept", "text/event-stream")
+            setRequestProperty("Authorization", "Bearer ${apiKey.trim()}")
+        }
+
+        try {
+            val body = JSONObject()
+                .put("model", modelName.trim())
+                .put("temperature", 0.1)
+                .put("stream", true)
+                .put(
+                    "messages",
+                    JSONArray()
+                        .put(JSONObject().put("role", "system").put("content", systemPrompt.trim()))
+                        .put(JSONObject().put("role", "user").put("content", userPayload))
+                )
+            if (maxTokens != null) body.put("max_tokens", maxTokens)
+
+            OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
+                writer.write(body.toString())
+            }
+
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+
+            if (code !in 200..299) {
+                val errorBody = if (stream != null) {
+                    BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { it.readText() }
+                } else ""
+                throw IllegalStateException(formatHttpError(code, errorBody))
+            }
+
+            if (stream == null) throw IllegalStateException("AI 接口无响应")
+
+            BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).use { reader ->
+                val contentBuilder = StringBuilder()
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    val currentLine = line ?: break
+                    if (currentLine.isBlank()) continue
+                    if (!currentLine.startsWith("data: ")) continue
+                    val data = currentLine.removePrefix("data: ").trim()
+                    if (data == "[DONE]") break
+                    val parsed = runCatching { JSONObject(data) }.getOrNull() ?: continue
+                    val choices = parsed.optJSONArray("choices") ?: continue
+                    val first = choices.optJSONObject(0) ?: continue
+                    val delta = first.optJSONObject("delta") ?: continue
+                    val reasoning = delta.optString("reasoning_content").orEmpty()
+                    val contentChunk = delta.optString("content").orEmpty()
+                    if (reasoning.isNotBlank()) callback.onReasoning(reasoning)
+                    if (contentChunk.isNotBlank()) {
+                        contentBuilder.append(contentChunk)
+                        callback.onContent(contentBuilder.toString())
+                    }
+                }
+                val fullContent = contentBuilder.toString().trim()
+                if (fullContent.isBlank()) {
+                    throw IllegalStateException("AI 流式返回内容为空，请检查模型名称或接口兼容性。")
+                }
+                callback.onDone(fullContent)
+            }
+        } catch (error: IllegalStateException) {
+            throw error
+        } catch (error: SocketTimeoutException) {
+            throw IllegalStateException("AI 请求超时，请检查网络或适当调大超时秒数。", error)
+        } catch (error: UnknownHostException) {
+            throw IllegalStateException("无法连接 AI 接口域名，请检查 API 地址或网络。", error)
+        } catch (error: IOException) {
+            throw IllegalStateException("AI 网络请求失败：${error.message ?: "请检查接口地址和网络"}", error)
         } finally {
             connection.disconnect()
         }
@@ -503,7 +711,7 @@ object MisakaAiClient {
         }
     }
 
-    private fun parseAnalysisSuggestions(content: String): List<AiAnalysisSuggestion> {
+    internal fun parseAnalysisSuggestions(content: String): List<AiAnalysisSuggestion> {
         val root = JSONObject(extractJsonObject(content))
         val items = root.optJSONArray("items") ?: JSONArray()
         return (0 until items.length()).mapNotNull { index ->
@@ -729,7 +937,7 @@ object MisakaAiClient {
             .put("notes", JSONArray().put("重构说明和需要人工确认的点"))
     }
 
-    private fun parseBankAnalysis(content: String): AiBankAnalysis {
+    internal fun parseBankAnalysis(content: String): AiBankAnalysis {
         val root = JSONObject(extractJsonObject(content))
         val clustersJson = root.optJSONArray("clusters") ?: JSONArray()
         val clusters = (0 until clustersJson.length()).mapNotNull { i ->

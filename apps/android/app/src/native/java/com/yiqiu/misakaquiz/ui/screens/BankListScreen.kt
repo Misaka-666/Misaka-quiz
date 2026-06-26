@@ -496,6 +496,8 @@ private fun BankCard(
     var analysisError by remember { mutableStateOf<String?>(null) }
     var analysisResult by remember { mutableStateOf<AiBankAnalysis?>(null) }
     var showAnalysisDialog by remember { mutableStateOf(false) }
+    var streamReasoning by remember { mutableStateOf("") }
+    var streamContent by remember { mutableStateOf("") }
 
     Surface(
         modifier = Modifier
@@ -602,6 +604,8 @@ private fun BankCard(
                                 analyzing = true
                                 analysisError = null
                                 analysisResult = null
+                                streamReasoning = ""
+                                streamContent = ""
                                 showAnalysisDialog = true
                                 scope.launch {
                                     try {
@@ -612,20 +616,31 @@ private fun BankCard(
                                             analysisError = "请先在「我的」中配置 AI 接口。"
                                             return@launch
                                         }
-                                        val result = withContext(Dispatchers.IO) {
-                                            MisakaAiClient.analyzeBank(
+                                        withContext(Dispatchers.IO) {
+                                            MisakaAiClient.analyzeBankStreaming(
                                                 apiBaseUrl = baseUrl,
                                                 apiKey = key,
                                                 modelName = model,
                                                 questions = bank.questions,
                                                 bankName = bank.name,
-                                                timeoutSeconds = 120
+                                                timeoutSeconds = 120,
+                                                callback = object : com.yiqiu.misakaquiz.ai.AiStreamCallback {
+                                                    override fun onReasoning(chunk: String) {
+                                                        streamReasoning = streamReasoning + chunk
+                                                    }
+                                                    override fun onContent(chunk: String) {
+                                                        streamContent = chunk
+                                                    }
+                                                    override fun onDone(fullContent: String) {
+                                                        streamContent = fullContent
+                                                        analysisResult = MisakaAiClient.parseBankAnalysis(fullContent)
+                                                        analyzing = false
+                                                    }
+                                                }
                                             )
                                         }
-                                        analysisResult = result
                                     } catch (e: Exception) {
                                         analysisError = e.message ?: "AI 分析失败"
-                                    } finally {
                                         analyzing = false
                                     }
                                 }
@@ -650,6 +665,8 @@ private fun BankCard(
                 analyzing = analyzing,
                 error = analysisError,
                 result = analysisResult,
+                streamReasoning = streamReasoning,
+                streamContent = streamContent,
                 onDismiss = {
                     showAnalysisDialog = false
                     analysisError = null
@@ -666,6 +683,8 @@ private fun AiBankAnalysisDialog(
     analyzing: Boolean,
     error: String?,
     result: AiBankAnalysis?,
+    streamReasoning: String,
+    streamContent: String,
     onDismiss: () -> Unit
 ) {
     Dialog(
@@ -709,9 +728,42 @@ private fun AiBankAnalysisDialog(
 
                 if (analyzing) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                        CircularProgressIndicator()
-                        Spacer(Modifier.height(12.dp))
-                        Text("正在分析题库，通常需要 20–60 秒...", style = MaterialTheme.typography.bodyMedium)
+                        CircularProgressIndicator(modifier = Modifier.padding(vertical = 8.dp))
+                        Spacer(Modifier.height(4.dp))
+                        Text("AI 分析中，思维链实时展示…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    if (streamReasoning.isNotBlank()) {
+                        Spacer(Modifier.height(10.dp))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(MisakaRadius.Md),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                            tonalElevation = 0.dp
+                        ) {
+                            Text(
+                                streamReasoning,
+                                modifier = Modifier.padding(12.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = MaterialTheme.typography.bodySmall.lineHeight
+                            )
+                        }
+                    }
+                    if (streamContent.isNotBlank() && streamReasoning.isNotBlank()) {
+                        Spacer(Modifier.height(10.dp))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(MisakaRadius.Md),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
+                            tonalElevation = 0.dp
+                        ) {
+                            Text(
+                                streamContent.takeLast(800),
+                                modifier = Modifier.padding(12.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 12
+                            )
+                        }
                     }
                 } else if (error != null) {
                     NoticeCard(text = error, warning = true)

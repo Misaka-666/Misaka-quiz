@@ -648,6 +648,7 @@ fun PracticeScreen(
         var freeAskResponse by remember(currentSessionKey) { mutableStateOf<String?>(null) }
         var freeAskError by remember(currentSessionKey) { mutableStateOf<String?>(null) }
         var isFreeAskLoading by remember(currentSessionKey) { mutableStateOf(false) }
+        var freeAskStreamContent by remember(currentSessionKey) { mutableStateOf("") }
         val runFreeAsk: (String) -> Unit = { userQuestion ->
             if (!QuizRepository.isAiConfigured()) {
                 freeAskError = "请先在 我的 → AI 设置 中配置 AI 接口。"
@@ -659,28 +660,37 @@ fun PracticeScreen(
                 isFreeAskLoading = true
                 freeAskError = null
                 freeAskResponse = null
+                freeAskStreamContent = ""
                 autoNextScope.launch {
                     val aiQuestion = practiceQuestionForDisplay(question, displayOptions)
-                    val result = runCatching {
+                    try {
                         withContext(Dispatchers.IO) {
-                            MisakaAiClient.freeAsk(
+                            MisakaAiClient.freeAskStreaming(
                                 apiBaseUrl = QuizRepository.aiApiBaseUrl,
                                 apiKey = QuizRepository.aiApiKey,
                                 modelName = QuizRepository.aiModelName,
                                 question = aiQuestion,
                                 userQuestion = userQuestion,
-                                timeoutSeconds = QuizRepository.aiTimeoutSeconds
+                                timeoutSeconds = QuizRepository.aiTimeoutSeconds,
+                                callback = object : com.yiqiu.misakaquiz.ai.AiStreamCallback {
+                                    override fun onReasoning(chunk: String) {}
+                                    override fun onContent(chunk: String) {
+                                        freeAskStreamContent = chunk
+                                    }
+                                    override fun onDone(fullContent: String) {
+                                        freeAskStreamContent = fullContent
+                                        freeAskResponse = fullContent.trim().ifBlank { "AI 未返回有效回答。" }
+                                        freeAskError = null
+                                        isFreeAskLoading = false
+                                    }
+                                }
                             )
                         }
-                    }
-                    result.onSuccess { answer ->
-                        freeAskResponse = answer.trim().ifBlank { "AI 未返回有效回答。" }
-                        freeAskError = null
-                    }.onFailure { error ->
+                    } catch (error: Exception) {
                         freeAskResponse = null
                         freeAskError = error.message ?: "提问失败，请检查接口配置或网络。"
+                        isFreeAskLoading = false
                     }
-                    isFreeAskLoading = false
                 }
             }
         }
@@ -1115,6 +1125,7 @@ fun PracticeScreen(
                         response = freeAskResponse,
                         error = freeAskError,
                         loading = isFreeAskLoading,
+                        streamContent = freeAskStreamContent,
                         onSend = { question ->
                             if (question.isNotBlank()) {
                                 freeAskInput = ""
@@ -2904,6 +2915,7 @@ private fun FreeAskPanel(
     response: String?,
     error: String?,
     loading: Boolean,
+    streamContent: String,
     onSend: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -2960,7 +2972,23 @@ private fun FreeAskPanel(
         // Result / error when expanded
         if (expanded) {
             if (loading) {
-                NoticeCard("AI 正在思考中，请稍候。", warning = false)
+                if (streamContent.isNotBlank()) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(MisakaRadius.Md),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                        tonalElevation = 0.dp
+                    ) {
+                        Text(
+                            streamContent.takeLast(400),
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 8
+                        )
+                    }
+                } else {
+                    NoticeCard("AI 正在思考中，请稍候。", warning = false)
+                }
             }
             error?.takeIf { it.isNotBlank() }?.let { message ->
                 NoticeCard("提问失败：$message", warning = true)

@@ -49,6 +49,7 @@ fun AiAnalysisFillPanel(
     var loading by remember(question.id, currentAnalysis) { mutableStateOf(false) }
     var suggestion by remember(question.id) { mutableStateOf<String?>(null) }
     var errorText by remember(question.id) { mutableStateOf<String?>(null) }
+    var streamContent by remember(question.id) { mutableStateOf("") }
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -85,29 +86,40 @@ fun AiAnalysisFillPanel(
                     else -> {
                         loading = true
                         errorText = null
+                        streamContent = ""
                         scope.launch {
-                            val result = runCatching {
+                            try {
                                 withContext(Dispatchers.IO) {
-                                    MisakaAiClient.generateAnalysis(
+                                    MisakaAiClient.generateAnalysisStreaming(
                                         apiBaseUrl = apiBaseUrl,
                                         apiKey = apiKey,
                                         modelName = modelName,
                                         questions = listOf(draftQuestion),
-                                        timeoutSeconds = QuizRepository.aiTimeoutSeconds
-                                    ).firstOrNull()
+                                        timeoutSeconds = QuizRepository.aiTimeoutSeconds,
+                                        callback = object : com.yiqiu.misakaquiz.ai.AiStreamCallback {
+                                            override fun onReasoning(chunk: String) {}
+                                            override fun onContent(chunk: String) {
+                                                streamContent = chunk
+                                            }
+                                            override fun onDone(fullContent: String) {
+                                                streamContent = fullContent
+                                                val parsed = MisakaAiClient.parseAnalysisSuggestions(fullContent)
+                                                val item = parsed.firstOrNull()
+                                                val text = item?.analysis.orEmpty().trim()
+                                                if (text.isBlank()) {
+                                                    errorText = "AI 没有返回可用解析。"
+                                                } else {
+                                                    suggestion = text
+                                                }
+                                                loading = false
+                                            }
+                                        }
+                                    )
                                 }
-                            }
-                            result.onSuccess { item ->
-                                val text = item?.analysis.orEmpty().trim()
-                                if (text.isBlank()) {
-                                    errorText = "AI 没有返回可用解析。"
-                                } else {
-                                    suggestion = text
-                                }
-                            }.onFailure { error ->
+                            } catch (error: Exception) {
                                 errorText = error.message ?: "请检查接口配置或网络。"
+                                loading = false
                             }
-                            loading = false
                         }
                     }
                 }
@@ -115,7 +127,23 @@ fun AiAnalysisFillPanel(
         )
 
         if (loading) {
-            NoticeCard("AI 正在根据题干、选项和答案生成解析建议，请稍候。", warning = false)
+            if (streamContent.isNotBlank()) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(MisakaRadius.Md),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f),
+                    tonalElevation = 0.dp
+                ) {
+                    Text(
+                        streamContent.takeLast(400),
+                        modifier = Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 8
+                    )
+                }
+            } else {
+                NoticeCard("AI 正在根据题干、选项和答案生成解析建议，请稍候。", warning = false)
+            }
         }
         errorText?.takeIf { it.isNotBlank() }?.let { message ->
             NoticeCard("AI 补解析失败：$message", warning = true)
