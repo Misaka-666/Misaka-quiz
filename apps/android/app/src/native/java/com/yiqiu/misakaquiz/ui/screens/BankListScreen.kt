@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -40,6 +41,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -734,19 +736,47 @@ private fun AiBankAnalysisDialog(
                     }
                     if (streamReasoning.isNotBlank()) {
                         Spacer(Modifier.height(10.dp))
+                        var reasoningExpanded by remember { mutableStateOf(false) }
+                        val reasoningScroll = rememberScrollState()
+                        val displayText = if (reasoningExpanded) streamReasoning else streamReasoning.takeLast(600)
+                        LaunchedEffect(streamReasoning) {
+                            reasoningScroll.animateScrollTo(reasoningScroll.maxValue)
+                        }
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(MisakaRadius.Md),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                             tonalElevation = 0.dp
                         ) {
-                            Text(
-                                streamReasoning,
-                                modifier = Modifier.padding(12.dp),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = MaterialTheme.typography.bodySmall.lineHeight
-                            )
+                            Column {
+                                Text(
+                                    text = if (streamReasoning.length > 600 && !reasoningExpanded) "…${displayText}" else displayText,
+                                    modifier = Modifier
+                                        .heightIn(max = 180.dp)
+                                        .verticalScroll(reasoningScroll)
+                                        .padding(12.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    lineHeight = MaterialTheme.typography.bodySmall.lineHeight
+                                )
+                                if (streamReasoning.length > 600) {
+                                    TextButton(
+                                        onClick = { reasoningExpanded = !reasoningExpanded },
+                                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                                    ) {
+                                        Icon(
+                                            if (reasoningExpanded) Icons.Rounded.ExpandMore else Icons.Rounded.ExpandMore,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(Modifier.width(4.dp))
+                                        Text(
+                                            if (reasoningExpanded) "收起" else "展开全部",
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                     if (streamContent.isNotBlank() && streamReasoning.isNotBlank()) {
