@@ -66,7 +66,8 @@ data class AiBankAnalysis(
     val confusingPairs: List<AiConfusingPair>,
     val progressions: List<AiProgression>,
     val memoryTips: List<String>,
-    val reviewStrategy: String
+    val reviewStrategy: String,
+    val entityKnowledgeMap: List<AiEntityKnowledge>
 )
 
 data class AiBankCluster(
@@ -84,6 +85,17 @@ data class AiConfusingPair(
 data class AiProgression(
     val chain: List<String>,
     val description: String
+)
+
+data class AiEntityKnowledge(
+    val entity: String,
+    val category: String,
+    val appearances: List<AiEntityAppearance>
+)
+
+data class AiEntityAppearance(
+    val questionNumber: String,
+    val knowledgePoint: String
 )
 
 object MisakaAiClient {
@@ -752,13 +764,30 @@ object MisakaAiClient {
         }
         val tipsJson = root.optJSONArray("memoryTips") ?: JSONArray()
         val memoryTips = (0 until tipsJson.length()).map { tipsJson.optString(it).trim() }.filter { it.isNotBlank() }
+        val entitiesJson = root.optJSONArray("entityKnowledgeMap") ?: JSONArray()
+        val entityKnowledgeMap = (0 until entitiesJson.length()).mapNotNull { i ->
+            val item = entitiesJson.optJSONObject(i) ?: return@mapNotNull null
+            val entity = item.optString("entity").trim()
+            if (entity.isBlank()) return@mapNotNull null
+            val appsJson = item.optJSONArray("appearances") ?: JSONArray()
+            val appearances = (0 until appsJson.length()).mapNotNull { j ->
+                val app = appsJson.optJSONObject(j) ?: return@mapNotNull null
+                val qn = app.optString("questionNumber").trim()
+                val kp = app.optString("knowledgePoint").trim()
+                if (qn.isBlank()) return@mapNotNull null
+                AiEntityAppearance(questionNumber = qn, knowledgePoint = kp)
+            }
+            if (appearances.size < 2) return@mapNotNull null
+            AiEntityKnowledge(entity = entity, category = item.optString("category").trim(), appearances = appearances)
+        }
         return AiBankAnalysis(
             overview = root.optString("overview").trim().ifBlank { "AI 没有返回概述。" },
             clusters = clusters,
             confusingPairs = confusingPairs,
             progressions = progressions,
             memoryTips = memoryTips,
-            reviewStrategy = root.optString("reviewStrategy").trim().ifBlank { "暂无特别建议。" }
+            reviewStrategy = root.optString("reviewStrategy").trim().ifBlank { "暂无特别建议。" },
+            entityKnowledgeMap = entityKnowledgeMap
         )
     }
 }

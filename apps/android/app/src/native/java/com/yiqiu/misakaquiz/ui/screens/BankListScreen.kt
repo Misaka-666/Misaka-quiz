@@ -829,6 +829,69 @@ private fun AiBankAnalysisDialog(
                         Spacer(Modifier.height(12.dp))
                     }
 
+                    // Entity Knowledge Map
+                    if (result.entityKnowledgeMap.isNotEmpty()) {
+                        Text("知识点关联", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(8.dp))
+                        result.entityKnowledgeMap.sortedByDescending { it.appearances.size }.forEach { entity ->
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(MisakaRadius.Md),
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                                tonalElevation = 0.dp
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Rounded.AutoAwesome,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            entity.entity,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        if (entity.category.isNotBlank()) {
+                                            Spacer(Modifier.width(8.dp))
+                                            Surface(
+                                                shape = RoundedCornerShape(MisakaRadius.Pill),
+                                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                            ) {
+                                                Text(
+                                                    entity.category,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Spacer(Modifier.height(6.dp))
+                                    entity.appearances.forEach { app ->
+                                        Row(modifier = Modifier.padding(vertical = 1.dp)) {
+                                            Text(
+                                                "题 ${app.questionNumber}  ",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                app.knowledgePoint,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(6.dp))
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+
                     // Review Strategy
                     if (result.reviewStrategy.isNotBlank()) {
                         Text("复习策略", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
