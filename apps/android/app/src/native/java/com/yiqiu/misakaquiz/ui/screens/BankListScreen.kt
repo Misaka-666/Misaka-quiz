@@ -35,6 +35,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -84,6 +85,15 @@ import com.yiqiu.misakaquiz.ui.theme.MisakaRadius
 import com.yiqiu.misakaquiz.ui.theme.MisakaSpacing
 import com.yiqiu.misakaquiz.ui.util.bankDisplayPath
 
+private data class BankAnalysisState(
+    val bankName: String,
+    val analyzing: Boolean = false,
+    val error: String? = null,
+    val result: AiBankAnalysis? = null,
+    val streamReasoning: String = "",
+    val streamContent: String = ""
+)
+
 @Composable
 fun BankListScreen(
     onBack: () -> Unit,
@@ -105,12 +115,8 @@ fun BankListScreen(
     var mergeTargetGroup by remember { mutableStateOf(DEFAULT_BANK_GROUP_NAME) }
     var showMergeDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    var batchAnalyzing by remember { mutableStateOf(false) }
-    var batchAnalysisError by remember { mutableStateOf<String?>(null) }
-    var batchAnalysisResult by remember { mutableStateOf<AiBankAnalysis?>(null) }
+    var batchStates by remember { mutableStateOf<Map<String, BankAnalysisState>>(emptyMap()) }
     var batchShowAnalysisDialog by remember { mutableStateOf(false) }
-    var batchStreamReasoning by remember { mutableStateOf("") }
-    var batchStreamContent by remember { mutableStateOf("") }
 
     if (editTarget != null) {
         AlertDialog(
@@ -372,46 +378,49 @@ fun BankListScreen(
                         text = "AI 分析所选",
                         primary = false,
                         modifier = Modifier.height(40.dp),
-                        enabled = selectedCount >= 1 && !batchAnalyzing,
+                        enabled = selectedCount >= 1 && batchStates.none { it.value.analyzing },
                         onClick = {
                             val selectedBanks = QuizRepository.banks.filter { it.id in selectedBankIds }
-                            val allQuestions = selectedBanks.flatMap { it.questions }
-                            val mergedName = selectedBanks.joinToString(" + ") { it.name }.take(80)
-                            val cacheId = "batch_" + selectedBankIds.sorted().joinToString("_")
-                            val cached = MisakaAiClient.loadBankAnalysis(context, cacheId)
-                            if (cached != null) {
-                                batchAnalysisResult = cached
-                                batchAnalysisError = null
-                                batchAnalyzing = false
-                                batchStreamReasoning = ""
-                                batchStreamContent = ""
-                                batchShowAnalysisDialog = true
-                            } else {
-                                batchAnalyzing = true
-                                batchAnalysisError = null
-                                batchAnalysisResult = null
-                                batchStreamReasoning = ""
-                                batchStreamContent = ""
-                                batchShowAnalysisDialog = true
-                                scope.launch {
-                                    launchBankAnalysis(
-                                        context = context,
-                                        cacheId = cacheId,
-                                        questions = allQuestions,
-                                        bankName = mergedName,
-                                        onReasoning = { batchStreamReasoning += it },
-                                        onContent = { batchStreamContent = it },
-                                        onDone = {
-                                            batchAnalysisResult = it
-                                            batchAnalyzing = false
-                                        },
-                                        onError = {
-                                            batchAnalysisError = it
-                                            batchAnalyzing = false
-                                            batchStreamReasoning = ""
-                                            batchStreamContent = ""
-                                        }
-                                    )
+                            val initialStates = selectedBanks.associate {
+                                it.id to BankAnalysisState(bankName = it.name, analyzing = true)
+                            }
+                            batchStates = initialStates
+                            batchShowAnalysisDialog = true
+                            selectedBanks.forEach { bank ->
+                                val cached = MisakaAiClient.loadBankAnalysis(context, bank.id)
+                                if (cached != null) {
+                                    batchStates = batchStates + (bank.id to initialStates[bank.id]!!.copy(
+                                        result = cached, analyzing = false
+                                    ))
+                                } else {
+                                    scope.launch {
+                                        launchBankAnalysis(
+                                            context = context,
+                                            cacheId = bank.id,
+                                            questions = bank.questions,
+                                            bankName = bank.name,
+                                            onReasoning = { c ->
+                                                batchStates = batchStates + (bank.id to batchStates[bank.id]!!.copy(
+                                                    streamReasoning = batchStates[bank.id]!!.streamReasoning + c
+                                                ))
+                                            },
+                                            onContent = { c ->
+                                                batchStates = batchStates + (bank.id to batchStates[bank.id]!!.copy(
+                                                    streamContent = c
+                                                ))
+                                            },
+                                            onDone = { result ->
+                                                batchStates = batchStates + (bank.id to batchStates[bank.id]!!.copy(
+                                                    result = result, analyzing = false
+                                                ))
+                                            },
+                                            onError = { error ->
+                                                batchStates = batchStates + (bank.id to batchStates[bank.id]!!.copy(
+                                                    error = error, analyzing = false, streamReasoning = "", streamContent = ""
+                                                ))
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -536,46 +545,41 @@ fun BankListScreen(
     }
 
     if (batchShowAnalysisDialog) {
-        AiBankAnalysisDialog(
-            bankName = "已选 ${selectedBankIds.size} 个题库",
-            analyzing = batchAnalyzing,
-            error = batchAnalysisError,
-            result = batchAnalysisResult,
-            streamReasoning = batchStreamReasoning,
-            streamContent = batchStreamContent,
+        BatchAiAnalysisDialog(
+            states = batchStates,
             onDismiss = {
                 batchShowAnalysisDialog = false
-                batchAnalysisError = null
-                batchAnalysisResult = null
+                batchStates = emptyMap()
             },
-            onRefresh = {
-                val selectedBanks = QuizRepository.banks.filter { it.id in selectedBankIds }
-                val allQuestions = selectedBanks.flatMap { it.questions }
-                val mergedName = selectedBanks.joinToString(" + ") { it.name }.take(80)
-                val cacheId = "batch_" + selectedBankIds.sorted().joinToString("_")
-                MisakaAiClient.clearBankAnalysis(context, cacheId)
-                batchAnalyzing = true
-                batchAnalysisError = null
-                batchAnalysisResult = null
-                batchStreamReasoning = ""
-                batchStreamContent = ""
+            onRefreshBank = { bankId ->
+                val bank = QuizRepository.banks.find { it.id == bankId } ?: return@BatchAiAnalysisDialog
+                MisakaAiClient.clearBankAnalysis(context, bankId)
+                batchStates = batchStates + (bankId to batchStates[bankId]!!.copy(
+                    analyzing = true, error = null, result = null, streamReasoning = "", streamContent = ""
+                ))
                 scope.launch {
                     launchBankAnalysis(
                         context = context,
-                        cacheId = cacheId,
-                        questions = allQuestions,
-                        bankName = mergedName,
-                        onReasoning = { batchStreamReasoning += it },
-                        onContent = { batchStreamContent = it },
-                        onDone = {
-                            batchAnalysisResult = it
-                            batchAnalyzing = false
+                        cacheId = bankId,
+                        questions = bank.questions,
+                        bankName = bank.name,
+                        onReasoning = { c ->
+                            batchStates = batchStates + (bankId to batchStates[bankId]!!.copy(
+                                streamReasoning = batchStates[bankId]!!.streamReasoning + c
+                            ))
                         },
-                        onError = {
-                            batchAnalysisError = it
-                            batchAnalyzing = false
-                            batchStreamReasoning = ""
-                            batchStreamContent = ""
+                        onContent = { c ->
+                            batchStates = batchStates + (bankId to batchStates[bankId]!!.copy(streamContent = c))
+                        },
+                        onDone = { result ->
+                            batchStates = batchStates + (bankId to batchStates[bankId]!!.copy(
+                                result = result, analyzing = false
+                            ))
+                        },
+                        onError = { error ->
+                            batchStates = batchStates + (bankId to batchStates[bankId]!!.copy(
+                                error = error, analyzing = false, streamReasoning = "", streamContent = ""
+                            ))
                         }
                     )
                 }
@@ -1204,3 +1208,184 @@ private suspend fun launchBankAnalysis(
         onError(e.message ?: "AI 分析失败")
     }
 }
+
+@Composable
+private fun BatchAiAnalysisDialog(
+    states: Map<String, BankAnalysisState>,
+    onDismiss: () -> Unit,
+    onRefreshBank: (String) -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(MisakaRadius.Xl),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "AI 题库分析（${states.size} 个）",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = onDismiss) {
+                        Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+
+                states.forEach { (bankId, state) ->
+                    Spacer(Modifier.height(12.dp))
+                    BankAnalysisPanel(
+                        state = state,
+                        onRefresh = { onRefreshBank(bankId) }
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        color = MisakaColors.LineSoft
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BankAnalysisPanel(
+    state: BankAnalysisState,
+    onRefresh: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = state.bankName,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f)
+            )
+            if (state.result != null && !state.analyzing) {
+                TextButton(onClick = onRefresh) {
+                    Icon(Icons.Rounded.AutoAwesome, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(3.dp))
+                    Text("重新分析", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+
+        if (state.analyzing) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                Spacer(Modifier.height(4.dp))
+                Text("AI 分析中…", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (state.streamReasoning.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                var reasoningExpanded by remember { mutableStateOf(false) }
+                val reasoningScroll = rememberScrollState()
+                val displayText = if (reasoningExpanded) state.streamReasoning else state.streamReasoning.takeLast(600)
+                LaunchedEffect(Unit) {
+                    snapshotFlow { state.streamReasoning }
+                        .collect { reasoningScroll.animateScrollTo(reasoningScroll.maxValue) }
+                }
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(MisakaRadius.Md),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                    tonalElevation = 0.dp
+                ) {
+                    Column {
+                        Text(
+                            text = if (state.streamReasoning.length > 600 && !reasoningExpanded) "…${displayText}" else displayText,
+                            modifier = Modifier
+                                .heightIn(max = 120.dp)
+                                .verticalScroll(reasoningScroll)
+                                .padding(8.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = MaterialTheme.typography.bodySmall.lineHeight
+                        )
+                        if (state.streamReasoning.length > 600) {
+                            TextButton(
+                                onClick = { reasoningExpanded = !reasoningExpanded },
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            ) {
+                                Icon(
+                                    if (reasoningExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(3.dp))
+                                Text(
+                                    if (reasoningExpanded) "收起" else "展开全部",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (state.error != null) {
+            Spacer(Modifier.height(4.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(MisakaRadius.Md),
+                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
+                tonalElevation = 0.dp
+            ) {
+                Text(
+                    state.error,
+                    modifier = Modifier.padding(10.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+
+        state.result?.let { result ->
+            Spacer(Modifier.height(8.dp))
+            if (result.clusters.isNotEmpty()) {
+                Text("知识点聚类：${result.clusters.size} 组", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                for (cluster in result.clusters.take(2)) {
+                    Text("· ${cluster.topic}（${cluster.questionNumbers.size}题）", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                if (result.clusters.size > 2) Text("  …等", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.height(4.dp))
+            if (result.confusingPairs.isNotEmpty()) {
+                Text("易混淆题对：${result.confusingPairs.size} 对", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                for (pair in result.confusingPairs.take(1)) {
+                    Text("· 题 ${pair.questionA} ↔ 题 ${pair.questionB}", style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            if (result.memoryTips.isNotEmpty()) {
+                Text("记忆技巧：${result.memoryTips.size} 条", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+                for (tip in result.memoryTips.take(2)) {
+                    Text("· $tip", style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+
