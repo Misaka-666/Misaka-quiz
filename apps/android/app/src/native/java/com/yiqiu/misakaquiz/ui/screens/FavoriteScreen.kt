@@ -9,19 +9,31 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -30,9 +42,11 @@ import com.yiqiu.misakaquiz.state.FavoriteQuestionEntry
 import com.yiqiu.misakaquiz.state.QuizRepository
 import com.yiqiu.misakaquiz.ui.components.ActionPillButton
 import com.yiqiu.misakaquiz.ui.components.GlassCard
-import com.yiqiu.misakaquiz.ui.components.NoticeCard
 import com.yiqiu.misakaquiz.ui.components.MisakaHeader
+import com.yiqiu.misakaquiz.ui.components.NoticeCard
 import com.yiqiu.misakaquiz.ui.components.StatusChip
+import com.yiqiu.misakaquiz.ui.components.misakaNoRippleClickable
+import com.yiqiu.misakaquiz.ui.theme.MisakaRadius
 import com.yiqiu.misakaquiz.ui.theme.MisakaSpacing
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -44,7 +58,98 @@ fun FavoriteScreen(
     onBack: () -> Unit,
     onGoPractice: () -> Unit
 ) {
+    val context = LocalContext.current
     val favorites = QuizRepository.favoriteQuestions.toList()
+    var favGroupFilter by remember { mutableStateOf<String?>(null) }
+    var showFavGroupPicker by remember { mutableStateOf(false) }
+
+    val filtered = if (favGroupFilter == null) favorites else favorites.filter { entry ->
+        (QuizRepository.banks.find { it.id == entry.bankId }?.groupName?.ifBlank { "未分组" }) == favGroupFilter
+    }
+
+    val favGroups = favorites.mapNotNull { entry ->
+        QuizRepository.banks.find { it.id == entry.bankId }?.groupName?.ifBlank { "未分组" }
+    }.distinct().sortedWith(compareBy<String> { it == "未分组" }.thenBy { it })
+
+    if (showFavGroupPicker) {
+        AlertDialog(
+            onDismissRequest = { showFavGroupPicker = false },
+            title = { Text("选择分组") },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    // "全部" option
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .misakaNoRippleClickable {
+                                favGroupFilter = null
+                                showFavGroupPicker = false
+                            },
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (favGroupFilter == null)
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                        else Color.Transparent
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "全部",
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (favGroupFilter == null) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                            Text(
+                                "${favorites.size}题",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    favGroups.forEach { group ->
+                        val count = favorites.count { entry ->
+                            (QuizRepository.banks.find { it.id == entry.bankId }?.groupName?.ifBlank { "未分组" }) == group
+                        }
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .misakaNoRippleClickable {
+                                    favGroupFilter = group
+                                    showFavGroupPicker = false
+                                },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (favGroupFilter == group)
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                            else Color.Transparent
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    group,
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (favGroupFilter == group) FontWeight.SemiBold else FontWeight.Normal
+                                )
+                                Text(
+                                    "${count}题",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFavGroupPicker = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -74,11 +179,24 @@ fun FavoriteScreen(
         }
 
         GlassCard {
-            Text(
-                text = "收藏 ${favorites.size} 题",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "收藏 ${filtered.size} 题",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.weight(1f))
+                ActionPillButton(
+                    icon = Icons.Rounded.Tune,
+                    text = favGroupFilter ?: "按分组",
+                    primary = favGroupFilter != null,
+                    modifier = Modifier.height(36.dp),
+                    onClick = { showFavGroupPicker = true }
+                )
+            }
             Spacer(Modifier.height(6.dp))
             Text(
                 text = "收藏夹由你手动标记，可用于集中回看和再次练习。",
@@ -99,7 +217,7 @@ fun FavoriteScreen(
                         .height(50.dp),
                     fillWidthContent = true,
                     onClick = {
-                        if (QuizRepository.startFavoritePractice(favorites)) {
+                        if (QuizRepository.startFavoritePractice(filtered)) {
                             onGoPractice()
                         }
                     }
@@ -117,7 +235,7 @@ fun FavoriteScreen(
             }
         }
 
-        favorites.forEach { entry ->
+        filtered.forEach { entry ->
             FavoriteQuestionPreview(entry)
         }
     }
