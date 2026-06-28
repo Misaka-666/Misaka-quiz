@@ -46,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
@@ -115,7 +116,7 @@ fun BankListScreen(
     var mergeTargetGroup by remember { mutableStateOf(DEFAULT_BANK_GROUP_NAME) }
     var showMergeDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    var batchStates by remember { mutableStateOf<Map<String, BankAnalysisState>>(emptyMap()) }
+    val batchStates = remember { mutableStateMapOf<String, BankAnalysisState>() }
     var batchShowAnalysisDialog by remember { mutableStateOf(false) }
 
     if (editTarget != null) {
@@ -384,14 +385,15 @@ fun BankListScreen(
                             val initialStates = selectedBanks.associate {
                                 it.id to BankAnalysisState(bankName = it.name, analyzing = true)
                             }
-                            batchStates = initialStates
+                            batchStates.clear()
+                            batchStates.putAll(initialStates)
                             batchShowAnalysisDialog = true
                             selectedBanks.forEach { bank ->
                                 val cached = MisakaAiClient.loadBankAnalysis(context, bank.id)
                                 if (cached != null) {
-                                    batchStates = batchStates + (bank.id to initialStates[bank.id]!!.copy(
+                                    batchStates[bank.id] = initialStates[bank.id]!!.copy(
                                         result = cached, analyzing = false
-                                    ))
+                                    )
                                 } else {
                                     scope.launch {
                                         launchBankAnalysis(
@@ -400,24 +402,24 @@ fun BankListScreen(
                                             questions = bank.questions,
                                             bankName = bank.name,
                                             onReasoning = { c ->
-                                                batchStates = batchStates + (bank.id to batchStates[bank.id]!!.copy(
+                                                batchStates[bank.id] = batchStates[bank.id]!!.copy(
                                                     streamReasoning = batchStates[bank.id]!!.streamReasoning + c
-                                                ))
+                                                )
                                             },
                                             onContent = { c ->
-                                                batchStates = batchStates + (bank.id to batchStates[bank.id]!!.copy(
+                                                batchStates[bank.id] = batchStates[bank.id]!!.copy(
                                                     streamContent = c
-                                                ))
+                                                )
                                             },
                                             onDone = { result ->
-                                                batchStates = batchStates + (bank.id to batchStates[bank.id]!!.copy(
+                                                batchStates[bank.id] = batchStates[bank.id]!!.copy(
                                                     result = result, analyzing = false
-                                                ))
+                                                )
                                             },
                                             onError = { error ->
-                                                batchStates = batchStates + (bank.id to batchStates[bank.id]!!.copy(
+                                                batchStates[bank.id] = batchStates[bank.id]!!.copy(
                                                     error = error, analyzing = false, streamReasoning = "", streamContent = ""
-                                                ))
+                                                )
                                             }
                                         )
                                     }
@@ -549,14 +551,14 @@ fun BankListScreen(
             states = batchStates,
             onDismiss = {
                 batchShowAnalysisDialog = false
-                batchStates = emptyMap()
+                batchStates.clear()
             },
             onRefreshBank = { bankId ->
                 val bank = QuizRepository.banks.find { it.id == bankId } ?: return@BatchAiAnalysisDialog
                 MisakaAiClient.clearBankAnalysis(context, bankId)
-                batchStates = batchStates + (bankId to batchStates[bankId]!!.copy(
+                batchStates[bankId] = batchStates[bankId]!!.copy(
                     analyzing = true, error = null, result = null, streamReasoning = "", streamContent = ""
-                ))
+                )
                 scope.launch {
                     launchBankAnalysis(
                         context = context,
@@ -564,22 +566,22 @@ fun BankListScreen(
                         questions = bank.questions,
                         bankName = bank.name,
                         onReasoning = { c ->
-                            batchStates = batchStates + (bankId to batchStates[bankId]!!.copy(
+                            batchStates[bankId] = batchStates[bankId]!!.copy(
                                 streamReasoning = batchStates[bankId]!!.streamReasoning + c
-                            ))
+                            )
                         },
                         onContent = { c ->
-                            batchStates = batchStates + (bankId to batchStates[bankId]!!.copy(streamContent = c))
+                            batchStates[bankId] = batchStates[bankId]!!.copy(streamContent = c)
                         },
                         onDone = { result ->
-                            batchStates = batchStates + (bankId to batchStates[bankId]!!.copy(
+                            batchStates[bankId] = batchStates[bankId]!!.copy(
                                 result = result, analyzing = false
-                            ))
+                            )
                         },
                         onError = { error ->
-                            batchStates = batchStates + (bankId to batchStates[bankId]!!.copy(
+                            batchStates[bankId] = batchStates[bankId]!!.copy(
                                 error = error, analyzing = false, streamReasoning = "", streamContent = ""
-                            ))
+                            )
                         }
                     )
                 }
