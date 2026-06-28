@@ -372,7 +372,7 @@ fun BankListScreen(
                         text = "AI 分析所选",
                         primary = false,
                         modifier = Modifier.height(40.dp),
-                        enabled = selectedCount >= 1,
+                        enabled = selectedCount >= 1 && !batchAnalyzing,
                         onClick = {
                             val selectedBanks = QuizRepository.banks.filter { it.id in selectedBankIds }
                             val allQuestions = selectedBanks.flatMap { it.questions }
@@ -408,6 +408,8 @@ fun BankListScreen(
                                         onError = {
                                             batchAnalysisError = it
                                             batchAnalyzing = false
+                                            batchStreamReasoning = ""
+                                            batchStreamContent = ""
                                         }
                                     )
                                 }
@@ -531,6 +533,54 @@ fun BankListScreen(
             )
         }
         Spacer(Modifier.height(MisakaSpacing.Xl))
+    }
+
+    if (batchShowAnalysisDialog) {
+        AiBankAnalysisDialog(
+            bankName = "已选 ${selectedBankIds.size} 个题库",
+            analyzing = batchAnalyzing,
+            error = batchAnalysisError,
+            result = batchAnalysisResult,
+            streamReasoning = batchStreamReasoning,
+            streamContent = batchStreamContent,
+            onDismiss = {
+                batchShowAnalysisDialog = false
+                batchAnalysisError = null
+                batchAnalysisResult = null
+            },
+            onRefresh = {
+                val selectedBanks = QuizRepository.banks.filter { it.id in selectedBankIds }
+                val allQuestions = selectedBanks.flatMap { it.questions }
+                val mergedName = selectedBanks.joinToString(" + ") { it.name }.take(80)
+                val cacheId = "batch_" + selectedBankIds.sorted().joinToString("_")
+                MisakaAiClient.clearBankAnalysis(context, cacheId)
+                batchAnalyzing = true
+                batchAnalysisError = null
+                batchAnalysisResult = null
+                batchStreamReasoning = ""
+                batchStreamContent = ""
+                scope.launch {
+                    launchBankAnalysis(
+                        context = context,
+                        cacheId = cacheId,
+                        questions = allQuestions,
+                        bankName = mergedName,
+                        onReasoning = { batchStreamReasoning += it },
+                        onContent = { batchStreamContent = it },
+                        onDone = {
+                            batchAnalysisResult = it
+                            batchAnalyzing = false
+                        },
+                        onError = {
+                            batchAnalysisError = it
+                            batchAnalyzing = false
+                            batchStreamReasoning = ""
+                            batchStreamContent = ""
+                        }
+                    )
+                }
+            }
+        )
     }
 }
 
@@ -693,6 +743,8 @@ private fun BankCard(
                                             onError = {
                                                 analysisError = it
                                                 analyzing = false
+                                                streamReasoning = ""
+                                                streamContent = ""
                                             }
                                         )
                                     }
@@ -747,6 +799,8 @@ private fun BankCard(
                             onError = {
                                 analysisError = it
                                 analyzing = false
+                                streamReasoning = ""
+                                streamContent = ""
                             }
                         )
                     }
