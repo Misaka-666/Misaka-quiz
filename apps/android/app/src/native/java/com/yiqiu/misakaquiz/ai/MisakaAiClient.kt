@@ -535,7 +535,7 @@ object MisakaAiClient {
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = timeoutMillis.coerceAtMost(30000)
-            readTimeout = timeoutMillis
+            readTimeout = 0
             doOutput = true
             useCaches = false
             setRequestProperty("Content-Type", "application/json; charset=utf-8")
