@@ -162,6 +162,7 @@ object QuizRepository {
     const val SEQUENTIAL_START_CUSTOM = "custom"
     const val WRONG_BOOK_SCOPE_CURRENT_BANK = "current_bank"
     const val WRONG_BOOK_SCOPE_ALL_BANKS = "all_banks"
+    const val WRONG_BOOK_SCOPE_GROUP = "group"
     const val PRACTICE_SCOPE_BANK = "BANK"
     const val PRACTICE_SCOPE_GROUP = "GROUP"
     const val PRACTICE_SCOPE_MULTI = "MULTI"
@@ -190,6 +191,7 @@ object QuizRepository {
     private const val KEY_EXAM_OPTION_SHUFFLE_ENABLED = "exam_option_shuffle_enabled"
     private const val KEY_WRONG_BOOK_SMART_REVIEW_ENABLED = "wrong_book_smart_review_enabled"
     private const val KEY_WRONG_BOOK_SCOPE_MODE = "wrong_book_scope_mode"
+    private const val KEY_WRONG_BOOK_SCOPE_GROUP_NAME = "wrong_book_scope_group_name"
     private const val KEY_PRACTICE_PREFERRED_COUNT_MODE = "practice_preferred_count_mode"
     private const val KEY_PRACTICE_PREFERRED_CUSTOM_COUNT = "practice_preferred_custom_count"
     private const val KEY_PRACTICE_PREFERRED_ORDER_MODE = "practice_preferred_order_mode"
@@ -286,6 +288,8 @@ object QuizRepository {
     var wrongBookSmartReviewEnabled by mutableStateOf(false)
         private set
     var wrongBookScopeMode by mutableStateOf(WRONG_BOOK_SCOPE_ALL_BANKS)
+        private set
+    var wrongBookScopeGroupName by mutableStateOf("")
         private set
     var preferredPracticeQuestionCountMode by mutableStateOf("custom")
         private set
@@ -509,6 +513,7 @@ object QuizRepository {
         wrongBookScopeMode = normalizeWrongBookScopeMode(
             prefs.getString(KEY_WRONG_BOOK_SCOPE_MODE, WRONG_BOOK_SCOPE_ALL_BANKS) ?: WRONG_BOOK_SCOPE_ALL_BANKS
         )
+        wrongBookScopeGroupName = prefs.getString(KEY_WRONG_BOOK_SCOPE_GROUP_NAME, "") ?: ""
         preferredPracticeQuestionCountMode = normalizePracticeCountMode(
             prefs.getString(KEY_PRACTICE_PREFERRED_COUNT_MODE, "custom") ?: "custom"
         )
@@ -1375,12 +1380,25 @@ object QuizRepository {
                 val currentBankId = activeBankId ?: activeBank()?.id ?: return emptyList()
                 wrongBook.filter { it.bankId == currentBankId }
             }
+            WRONG_BOOK_SCOPE_GROUP -> {
+                val group = normalizeBankGroupName(wrongBookScopeGroupName)
+                if (group.isBlank() || group == normalizeBankGroupName(DEFAULT_BANK_GROUP_NAME))
+                    return wrongBook.toList()
+                val bankIds = banks.filter {
+                    normalizeBankGroupName(it.groupName) == group
+                }.map { it.id }.toSet()
+                wrongBook.filter { it.bankId in bankIds }
+            }
             else -> wrongBook.toList()
         }
     }
 
     fun currentWrongBookScopeLabel(): String {
-        return if (wrongBookScopeMode == WRONG_BOOK_SCOPE_CURRENT_BANK) "当前题库" else "全部题库"
+        return when (wrongBookScopeMode) {
+            WRONG_BOOK_SCOPE_CURRENT_BANK -> "当前题库"
+            WRONG_BOOK_SCOPE_GROUP -> wrongBookScopeGroupName.ifBlank { "分组" }
+            else -> "全部题库"
+        }
     }
 
     fun reviewDueWrongEntries(): List<WrongQuestionEntry> {
@@ -1421,11 +1439,23 @@ object QuizRepository {
     }
 
     fun clearWrongBookForCurrentScope() {
-        if (wrongBookScopeMode == WRONG_BOOK_SCOPE_CURRENT_BANK) {
-            val currentBankId = activeBankId ?: activeBank()?.id ?: return
-            wrongBook.removeAll { it.bankId == currentBankId }
-        } else {
-            wrongBook.clear()
+        when (wrongBookScopeMode) {
+            WRONG_BOOK_SCOPE_CURRENT_BANK -> {
+                val currentBankId = activeBankId ?: activeBank()?.id ?: return
+                wrongBook.removeAll { it.bankId == currentBankId }
+            }
+            WRONG_BOOK_SCOPE_GROUP -> {
+                val group = normalizeBankGroupName(wrongBookScopeGroupName)
+                if (group.isBlank() || group == normalizeBankGroupName(DEFAULT_BANK_GROUP_NAME)) {
+                    wrongBook.clear()
+                } else {
+                    val bankIds = banks.filter {
+                        normalizeBankGroupName(it.groupName) == group
+                    }.map { it.id }.toSet()
+                    wrongBook.removeAll { it.bankId in bankIds }
+                }
+            }
+            else -> wrongBook.clear()
         }
         persist()
     }
@@ -1681,9 +1711,12 @@ object QuizRepository {
         persist()
     }
 
-    fun setWrongBookScopeMode(context: Context, mode: String) {
+    fun setWrongBookScopeMode(context: Context, mode: String, groupName: String? = null) {
         appContext = context.applicationContext
         wrongBookScopeMode = normalizeWrongBookScopeMode(mode)
+        if (mode == WRONG_BOOK_SCOPE_GROUP && groupName != null) {
+            wrongBookScopeGroupName = groupName
+        }
         persist()
     }
 
@@ -3947,6 +3980,7 @@ object QuizRepository {
     private fun normalizeWrongBookScopeMode(mode: String?): String {
         return when (mode) {
             WRONG_BOOK_SCOPE_CURRENT_BANK -> WRONG_BOOK_SCOPE_CURRENT_BANK
+            WRONG_BOOK_SCOPE_GROUP -> WRONG_BOOK_SCOPE_GROUP
             WRONG_BOOK_SCOPE_ALL_BANKS -> WRONG_BOOK_SCOPE_ALL_BANKS
             else -> WRONG_BOOK_SCOPE_ALL_BANKS
         }
@@ -4173,6 +4207,7 @@ object QuizRepository {
             .putBoolean(KEY_EXAM_OPTION_SHUFFLE_ENABLED, examOptionShuffleEnabled)
             .putBoolean(KEY_WRONG_BOOK_SMART_REVIEW_ENABLED, wrongBookSmartReviewEnabled)
             .putString(KEY_WRONG_BOOK_SCOPE_MODE, wrongBookScopeMode)
+            .putString(KEY_WRONG_BOOK_SCOPE_GROUP_NAME, wrongBookScopeGroupName)
             .putString(KEY_PRACTICE_PREFERRED_COUNT_MODE, preferredPracticeQuestionCountMode)
             .putInt(KEY_PRACTICE_PREFERRED_CUSTOM_COUNT, preferredPracticeCustomQuestionCount)
             .putString(KEY_PRACTICE_PREFERRED_ORDER_MODE, preferredPracticeOrderMode)

@@ -643,6 +643,68 @@ fun WrongBookPreferenceScreen(
         GlassCard {
             val scopeMode = QuizRepository.wrongBookScopeMode
             val activeBankName = QuizRepository.activeBank()?.name ?: "未选择题库"
+            var showGroupPicker by remember { mutableStateOf(false) }
+            if (showGroupPicker) {
+                val groups = QuizRepository.banks
+                    .map { it.groupName }
+                    .distinct()
+                    .sortedBy { if (it == "未分组") "zzz" else it }
+                AlertDialog(
+                    onDismissRequest = { showGroupPicker = false },
+                    title = { Text("选择分组") },
+                    text = {
+                        Column(
+                            modifier = Modifier.verticalScroll(rememberScrollState())
+                        ) {
+                            groups.forEach { group ->
+                                val isSelected = scopeMode == QuizRepository.WRONG_BOOK_SCOPE_GROUP
+                                        && QuizRepository.wrongBookScopeGroupName == group
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .misakaNoRippleClickable {
+                                            QuizRepository.setWrongBookScopeMode(
+                                                context,
+                                                QuizRepository.WRONG_BOOK_SCOPE_GROUP,
+                                                groupName = group
+                                            )
+                                            showGroupPicker = false
+                                        },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (isSelected)
+                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                    else Color.Transparent
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            group,
+                                            modifier = Modifier.weight(1f),
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                        )
+                                        val bankCount = QuizRepository.banks.count {
+                                            it.groupName == group
+                                        }
+                                        Text(
+                                            "${bankCount}库",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showGroupPicker = false }) {
+                            Text("取消")
+                        }
+                    }
+                )
+            }
             Text(
                 text = "错题显示范围",
                 style = MaterialTheme.typography.titleLarge,
@@ -682,6 +744,17 @@ fun WrongBookPreferenceScreen(
                     onClick = {
                         QuizRepository.setWrongBookScopeMode(context, QuizRepository.WRONG_BOOK_SCOPE_ALL_BANKS)
                     }
+                )
+                ActionPillButton(
+                    icon = Icons.Rounded.Tune,
+                    text = if (scopeMode == QuizRepository.WRONG_BOOK_SCOPE_GROUP)
+                        QuizRepository.wrongBookScopeGroupName.ifBlank { "分组" } else "按分组",
+                    primary = scopeMode == QuizRepository.WRONG_BOOK_SCOPE_GROUP,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp),
+                    fillWidthContent = true,
+                    onClick = { showGroupPicker = true }
                 )
             }
         }
