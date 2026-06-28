@@ -102,6 +102,13 @@ fun BankListScreen(
     var mergeTargetNames by remember { mutableStateOf("") }
     var mergeTargetGroup by remember { mutableStateOf(DEFAULT_BANK_GROUP_NAME) }
     var showMergeDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var batchAnalyzing by remember { mutableStateOf(false) }
+    var batchAnalysisError by remember { mutableStateOf<String?>(null) }
+    var batchAnalysisResult by remember { mutableStateOf<AiBankAnalysis?>(null) }
+    var batchShowAnalysisDialog by remember { mutableStateOf(false) }
+    var batchStreamReasoning by remember { mutableStateOf("") }
+    var batchStreamContent by remember { mutableStateOf("") }
 
     if (editTarget != null) {
         AlertDialog(
@@ -355,6 +362,74 @@ fun BankListScreen(
                         onClick = {
                             QuizRepository.setPracticeMultiBankScope(context, selectedBankIds)
                             selectedBankIds = emptySet()
+                        }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    ActionPillButton(
+                        icon = Icons.Rounded.AutoAwesome,
+                        text = "AI 分析所选",
+                        primary = false,
+                        modifier = Modifier.height(40.dp),
+                        enabled = selectedCount >= 1,
+                        onClick = {
+                            val selectedBanks = QuizRepository.banks.filter { it.id in selectedBankIds }
+                            val allQuestions = selectedBanks.flatMap { it.questions }
+                            val mergedName = selectedBanks.joinToString(" + ") { it.name }.take(80)
+                            val cacheId = "batch_" + selectedBankIds.sorted().joinToString("_")
+                            val cached = MisakaAiClient.loadBankAnalysis(context, cacheId)
+                            if (cached != null) {
+                                batchAnalysisResult = cached
+                                batchAnalysisError = null
+                                batchAnalyzing = false
+                                batchStreamReasoning = ""
+                                batchStreamContent = ""
+                                batchShowAnalysisDialog = true
+                            } else {
+                                batchAnalyzing = true
+                                batchAnalysisError = null
+                                batchAnalysisResult = null
+                                batchStreamReasoning = ""
+                                batchStreamContent = ""
+                                batchShowAnalysisDialog = true
+                                scope.launch {
+                                    try {
+                                        val baseUrl = QuizRepository.aiApiBaseUrl.trim()
+                                        val key = QuizRepository.aiApiKey.trim()
+                                        val model = QuizRepository.aiModelName.trim()
+                                        if (baseUrl.isBlank() || key.isBlank() || model.isBlank()) {
+                                            batchAnalysisError = "请先在「我的」中配置 AI 接口。"
+                                            return@launch
+                                        }
+                                        withContext(Dispatchers.IO) {
+                                            MisakaAiClient.analyzeBankStreaming(
+                                                apiBaseUrl = baseUrl,
+                                                apiKey = key,
+                                                modelName = model,
+                                                questions = allQuestions,
+                                                bankName = mergedName,
+                                                timeoutSeconds = 120,
+                                                callback = object : com.yiqiu.misakaquiz.ai.AiStreamCallback {
+                                                    override fun onReasoning(chunk: String) {
+                                                        batchStreamReasoning = batchStreamReasoning + chunk
+                                                    }
+                                                    override fun onContent(chunk: String) {
+                                                        batchStreamContent = chunk
+                                                    }
+                                                    override fun onDone(fullContent: String) {
+                                                        batchStreamContent = fullContent
+                                                        batchAnalysisResult = MisakaAiClient.parseBankAnalysis(fullContent)
+                                                        MisakaAiClient.saveBankAnalysis(context, cacheId, fullContent)
+                                                        batchAnalyzing = false
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    } catch (e: Exception) {
+                                        batchAnalysisError = e.message ?: "AI 分析失败"
+                                        batchAnalyzing = false
+                                    }
+                                }
+                            }
                         }
                     )
                     Spacer(Modifier.width(8.dp))
