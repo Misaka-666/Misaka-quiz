@@ -648,7 +648,7 @@ fun WrongBookPreferenceScreen(
                 val groups = QuizRepository.banks
                     .map { it.groupName }
                     .distinct()
-                    .sortedBy { if (it == "未分组") "zzz" else it }
+                    .sortedWith(compareBy<String> { it == "未分组" }.thenBy { it })
                 AlertDialog(
                     onDismissRequest = { showGroupPicker = false },
                     title = { Text("选择分组") },

@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -67,6 +68,7 @@ import com.yiqiu.misakaquiz.importer.model.QuestionType
 import com.yiqiu.misakaquiz.state.DEFAULT_BANK_GROUP_NAME
 import com.yiqiu.misakaquiz.state.QuizBank
 import com.yiqiu.misakaquiz.ai.AiBankAnalysis
+import com.yiqiu.misakaquiz.ai.AiStreamCallback
 import com.yiqiu.misakaquiz.ai.MisakaAiClient
 import com.yiqiu.misakaquiz.state.QuizRepository
 import com.yiqiu.misakaquiz.ui.components.ActionPillButton
@@ -392,42 +394,22 @@ fun BankListScreen(
                                 batchStreamContent = ""
                                 batchShowAnalysisDialog = true
                                 scope.launch {
-                                    try {
-                                        val baseUrl = QuizRepository.aiApiBaseUrl.trim()
-                                        val key = QuizRepository.aiApiKey.trim()
-                                        val model = QuizRepository.aiModelName.trim()
-                                        if (baseUrl.isBlank() || key.isBlank() || model.isBlank()) {
-                                            batchAnalysisError = "请先在「我的」中配置 AI 接口。"
-                                            return@launch
+                                    launchBankAnalysis(
+                                        context = context,
+                                        cacheId = cacheId,
+                                        questions = allQuestions,
+                                        bankName = mergedName,
+                                        onReasoning = { batchStreamReasoning += it },
+                                        onContent = { batchStreamContent = it },
+                                        onDone = {
+                                            batchAnalysisResult = it
+                                            batchAnalyzing = false
+                                        },
+                                        onError = {
+                                            batchAnalysisError = it
+                                            batchAnalyzing = false
                                         }
-                                        withContext(Dispatchers.IO) {
-                                            MisakaAiClient.analyzeBankStreaming(
-                                                apiBaseUrl = baseUrl,
-                                                apiKey = key,
-                                                modelName = model,
-                                                questions = allQuestions,
-                                                bankName = mergedName,
-                                                timeoutSeconds = 120,
-                                                callback = object : com.yiqiu.misakaquiz.ai.AiStreamCallback {
-                                                    override fun onReasoning(chunk: String) {
-                                                        batchStreamReasoning = batchStreamReasoning + chunk
-                                                    }
-                                                    override fun onContent(chunk: String) {
-                                                        batchStreamContent = chunk
-                                                    }
-                                                    override fun onDone(fullContent: String) {
-                                                        batchStreamContent = fullContent
-                                                        batchAnalysisResult = MisakaAiClient.parseBankAnalysis(fullContent)
-                                                        MisakaAiClient.saveBankAnalysis(context, cacheId, fullContent)
-                                                        batchAnalyzing = false
-                                                    }
-                                                }
-                                            )
-                                        }
-                                    } catch (e: Exception) {
-                                        batchAnalysisError = e.message ?: "AI 分析失败"
-                                        batchAnalyzing = false
-                                    }
+                                    )
                                 }
                             }
                         }
@@ -697,42 +679,22 @@ private fun BankCard(
                                     streamContent = ""
                                     showAnalysisDialog = true
                                     scope.launch {
-                                        try {
-                                            val baseUrl = QuizRepository.aiApiBaseUrl.trim()
-                                            val key = QuizRepository.aiApiKey.trim()
-                                            val model = QuizRepository.aiModelName.trim()
-                                            if (baseUrl.isBlank() || key.isBlank() || model.isBlank()) {
-                                                analysisError = "请先在「我的」中配置 AI 接口。"
-                                                return@launch
+                                        launchBankAnalysis(
+                                            context = context,
+                                            cacheId = bank.id,
+                                            questions = bank.questions,
+                                            bankName = bank.name,
+                                            onReasoning = { streamReasoning += it },
+                                            onContent = { streamContent = it },
+                                            onDone = {
+                                                analysisResult = it
+                                                analyzing = false
+                                            },
+                                            onError = {
+                                                analysisError = it
+                                                analyzing = false
                                             }
-                                            withContext(Dispatchers.IO) {
-                                                MisakaAiClient.analyzeBankStreaming(
-                                                    apiBaseUrl = baseUrl,
-                                                    apiKey = key,
-                                                    modelName = model,
-                                                    questions = bank.questions,
-                                                    bankName = bank.name,
-                                                    timeoutSeconds = 120,
-                                                    callback = object : com.yiqiu.misakaquiz.ai.AiStreamCallback {
-                                                        override fun onReasoning(chunk: String) {
-                                                            streamReasoning = streamReasoning + chunk
-                                                        }
-                                                        override fun onContent(chunk: String) {
-                                                            streamContent = chunk
-                                                        }
-                                                        override fun onDone(fullContent: String) {
-                                                            streamContent = fullContent
-                                                            analysisResult = MisakaAiClient.parseBankAnalysis(fullContent)
-                                                            MisakaAiClient.saveBankAnalysis(context, bank.id, fullContent)
-                                                            analyzing = false
-                                                        }
-                                                    }
-                                                )
-                                            }
-                                        } catch (e: Exception) {
-                                            analysisError = e.message ?: "AI 分析失败"
-                                            analyzing = false
-                                        }
+                                        )
                                     }
                                 }
                             }
@@ -771,42 +733,22 @@ private fun BankCard(
                     streamReasoning = ""
                     streamContent = ""
                     scope.launch {
-                        try {
-                            val baseUrl = QuizRepository.aiApiBaseUrl.trim()
-                            val key = QuizRepository.aiApiKey.trim()
-                            val model = QuizRepository.aiModelName.trim()
-                            if (baseUrl.isBlank() || key.isBlank() || model.isBlank()) {
-                                analysisError = "请先在「我的」中配置 AI 接口。"
-                                return@launch
+                        launchBankAnalysis(
+                            context = context,
+                            cacheId = bank.id,
+                            questions = bank.questions,
+                            bankName = bank.name,
+                            onReasoning = { streamReasoning += it },
+                            onContent = { streamContent = it },
+                            onDone = {
+                                analysisResult = it
+                                analyzing = false
+                            },
+                            onError = {
+                                analysisError = it
+                                analyzing = false
                             }
-                            withContext(Dispatchers.IO) {
-                                MisakaAiClient.analyzeBankStreaming(
-                                    apiBaseUrl = baseUrl,
-                                    apiKey = key,
-                                    modelName = model,
-                                    questions = bank.questions,
-                                    bankName = bank.name,
-                                    timeoutSeconds = 120,
-                                    callback = object : com.yiqiu.misakaquiz.ai.AiStreamCallback {
-                                        override fun onReasoning(chunk: String) {
-                                            streamReasoning = streamReasoning + chunk
-                                        }
-                                        override fun onContent(chunk: String) {
-                                            streamContent = chunk
-                                        }
-                                        override fun onDone(fullContent: String) {
-                                            streamContent = fullContent
-                                            analysisResult = MisakaAiClient.parseBankAnalysis(fullContent)
-                                            MisakaAiClient.saveBankAnalysis(context, bank.id, fullContent)
-                                            analyzing = false
-                                        }
-                                    }
-                                )
-                            }
-                        } catch (e: Exception) {
-                            analysisError = e.message ?: "AI 分析失败"
-                            analyzing = false
-                        }
+                        )
                     }
                 }
             )
@@ -825,6 +767,7 @@ private fun AiBankAnalysisDialog(
     onDismiss: () -> Unit,
     onRefresh: () -> Unit
 ) {
+    val MAX_COLLAPSED_REASONING = 600
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -881,7 +824,7 @@ private fun AiBankAnalysisDialog(
                         Spacer(Modifier.height(10.dp))
                         var reasoningExpanded by remember { mutableStateOf(false) }
                         val reasoningScroll = rememberScrollState()
-                        val displayText = if (reasoningExpanded) streamReasoning else streamReasoning.takeLast(600)
+                        val displayText = if (reasoningExpanded) streamReasoning else streamReasoning.takeLast(MAX_COLLAPSED_REASONING)
                         LaunchedEffect(Unit) {
                             snapshotFlow { streamReasoning }
                                 .collect { reasoningScroll.animateScrollTo(reasoningScroll.maxValue) }
@@ -894,7 +837,7 @@ private fun AiBankAnalysisDialog(
                         ) {
                             Column {
                                 Text(
-                                    text = if (streamReasoning.length > 600 && !reasoningExpanded) "…${displayText}" else displayText,
+                                    text = if (streamReasoning.length > MAX_COLLAPSED_REASONING && !reasoningExpanded) "…${displayText}" else displayText,
                                     modifier = Modifier
                                         .heightIn(max = 180.dp)
                                         .verticalScroll(reasoningScroll)
@@ -903,7 +846,7 @@ private fun AiBankAnalysisDialog(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     lineHeight = MaterialTheme.typography.bodySmall.lineHeight
                                 )
-                                if (streamReasoning.length > 600) {
+                                if (streamReasoning.length > MAX_COLLAPSED_REASONING) {
                                     TextButton(
                                         onClick = { reasoningExpanded = !reasoningExpanded },
                                         modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -1162,5 +1105,48 @@ private fun CompactBankStateChip(
                 maxLines = 1
             )
         }
+    }
+}
+
+// pony: 3 call-site dedup — streaming launch logic extracted
+private suspend fun launchBankAnalysis(
+    context: android.content.Context,
+    cacheId: String,
+    questions: List<com.yiqiu.misakaquiz.importer.model.Question>,
+    bankName: String,
+    onReasoning: (String) -> Unit,
+    onContent: (String) -> Unit,
+    onDone: (AiBankAnalysis) -> Unit,
+    onError: (String) -> Unit
+) {
+    val baseUrl = QuizRepository.aiApiBaseUrl.trim()
+    val key = QuizRepository.aiApiKey.trim()
+    val model = QuizRepository.aiModelName.trim()
+    if (baseUrl.isBlank() || key.isBlank() || model.isBlank()) {
+        onError("请先在「我的」中配置 AI 接口。")
+        return
+    }
+    try {
+        withContext(Dispatchers.IO) {
+            MisakaAiClient.analyzeBankStreaming(
+                apiBaseUrl = baseUrl,
+                apiKey = key,
+                modelName = model,
+                questions = questions,
+                bankName = bankName,
+                timeoutSeconds = 120,
+                callback = object : AiStreamCallback {
+                    override fun onReasoning(chunk: String) { onReasoning(chunk) }
+                    override fun onContent(chunk: String) { onContent(chunk) }
+                    override fun onDone(fullContent: String) {
+                        val result = MisakaAiClient.parseBankAnalysis(fullContent)
+                        MisakaAiClient.saveBankAnalysis(context, cacheId, fullContent)
+                        onDone(result)
+                    }
+                }
+            )
+        }
+    } catch (e: Exception) {
+        onError(e.message ?: "AI 分析失败")
     }
 }
