@@ -13,7 +13,7 @@
             android:name="com.yiqiu.misakaquiz.MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
             tools:replace="android:exported,android:configChanges" />
 
         <activity-alias
