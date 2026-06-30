@@ -1407,6 +1407,10 @@ object QuizRepository {
         return when (wrongBookScopeMode) {
             WRONG_BOOK_SCOPE_CURRENT_BANK -> "当前题库"
             WRONG_BOOK_SCOPE_GROUP -> wrongBookScopeGroupName.ifBlank { "分组" }
+            WRONG_BOOK_SCOPE_BANK -> {
+                val bank = banks.find { it.id == wrongBookScopeBankId }
+                bank?.name ?: "题库"
+            }
             else -> "全部题库"
         }
     }
@@ -1464,6 +1468,9 @@ object QuizRepository {
                     }.map { it.id }.toSet()
                     wrongBook.removeAll { it.bankId in bankIds }
                 }
+            }
+            WRONG_BOOK_SCOPE_BANK -> {
+                wrongBook.removeAll { it.bankId == wrongBookScopeBankId }
             }
             else -> wrongBook.clear()
         }
