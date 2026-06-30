@@ -10,15 +10,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,6 +32,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,7 +51,9 @@ import com.yiqiu.misakaquiz.ui.components.NoticeCard
 import com.yiqiu.misakaquiz.ui.components.MisakaDangerConfirmDialog
 import com.yiqiu.misakaquiz.ui.components.MisakaHeader
 import com.yiqiu.misakaquiz.ui.components.StatusChip
+import com.yiqiu.misakaquiz.ui.components.misakaNoRippleClickable
 import com.yiqiu.misakaquiz.ui.theme.MisakaDimens
+import com.yiqiu.misakaquiz.ui.theme.MisakaRadius
 import com.yiqiu.misakaquiz.ui.theme.MisakaSpacing
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -67,6 +77,7 @@ fun WrongBookScreen(
     onBack: () -> Unit,
     onGoPractice: () -> Unit
 ) {
+    val context = LocalContext.current
     val wrongBook = QuizRepository.wrongBookEntriesForCurrentScope()
     val allWrongBook = QuizRepository.wrongBook.toList()
     val scopeLabel = QuizRepository.currentWrongBookScopeLabel()
@@ -75,6 +86,7 @@ fun WrongBookScreen(
     var filter by remember { mutableStateOf(WrongBookFilter.NOT_MASTERED) }
     var sort by remember { mutableStateOf(WrongBookSort.RECENT_WRONG) }
     var showClearWrongBookConfirm by remember { mutableStateOf(false) }
+    var showScopePicker by remember { mutableStateOf(false) }
     val filteredEntries = remember(wrongBook, filter, sort) {
         wrongBook.filterBy(filter).sortBy(sort)
     }
@@ -84,6 +96,68 @@ fun WrongBookScreen(
     val smartReviewEnabled = QuizRepository.wrongBookSmartReviewEnabled
     val smartReviewSummary = QuizRepository.todayWrongBookSmartReviewSummary()
     val isCurrentBankScope = scopeMode == QuizRepository.WRONG_BOOK_SCOPE_CURRENT_BANK
+
+    if (showScopePicker) {
+        val scopeGroups = allWrongBook.mapNotNull { entry ->
+            QuizRepository.banks.find { it.id == entry.bankId }?.groupName?.ifBlank { "未分组" }
+        }.distinct().sortedWith(compareBy<String> { it == "未分组" }.thenBy { it })
+        AlertDialog(
+            onDismissRequest = { showScopePicker = false },
+            title = { Text("错题范围") },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    if (activeBank != null) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().misakaNoRippleClickable {
+                                QuizRepository.setWrongBookScopeMode(context, QuizRepository.WRONG_BOOK_SCOPE_CURRENT_BANK)
+                                showScopePicker = false
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (scopeMode == QuizRepository.WRONG_BOOK_SCOPE_CURRENT_BANK) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
+                        ) {
+                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text("当前题库", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, fontWeight = if (scopeMode == QuizRepository.WRONG_BOOK_SCOPE_CURRENT_BANK) FontWeight.SemiBold else FontWeight.Normal)
+                                Text(activeBank.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().misakaNoRippleClickable {
+                            QuizRepository.setWrongBookScopeMode(context, QuizRepository.WRONG_BOOK_SCOPE_ALL_BANKS)
+                            showScopePicker = false
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (scopeMode == QuizRepository.WRONG_BOOK_SCOPE_ALL_BANKS) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
+                    ) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("全部题库", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, fontWeight = if (scopeMode == QuizRepository.WRONG_BOOK_SCOPE_ALL_BANKS) FontWeight.SemiBold else FontWeight.Normal)
+                            Text("${allWrongBook.size}题", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                    scopeGroups.forEach { group ->
+                        val count = allWrongBook.count { entry ->
+                            (QuizRepository.banks.find { it.id == entry.bankId }?.groupName?.ifBlank { "未分组" }) == group
+                        }
+                        val isSelected = scopeMode == QuizRepository.WRONG_BOOK_SCOPE_GROUP && QuizRepository.wrongBookScopeGroupName == group
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().misakaNoRippleClickable {
+                                QuizRepository.setWrongBookScopeMode(context, QuizRepository.WRONG_BOOK_SCOPE_GROUP, group)
+                                showScopePicker = false
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
+                        ) {
+                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(group, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
+                                Text("${count}题", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showScopePicker = false }) { Text("取消") } }
+        )
+    }
 
     if (showClearWrongBookConfirm) {
         MisakaDangerConfirmDialog(
@@ -167,13 +241,22 @@ fun WrongBookScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                ActionPillButton(
-                    icon = Icons.Rounded.DeleteOutline,
-                    text = "清空",
-                    primary = false,
-                    modifier = Modifier.height(42.dp),
-                    onClick = { showClearWrongBookConfirm = true }
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ActionPillButton(
+                        icon = Icons.Rounded.Tune,
+                        text = scopeLabel,
+                        primary = scopeMode != QuizRepository.WRONG_BOOK_SCOPE_ALL_BANKS,
+                        modifier = Modifier.height(42.dp),
+                        onClick = { showScopePicker = true }
+                    )
+                    ActionPillButton(
+                        icon = Icons.Rounded.DeleteOutline,
+                        text = "清空",
+                        primary = false,
+                        modifier = Modifier.height(42.dp),
+                        onClick = { showClearWrongBookConfirm = true }
+                    )
+                }
             }
 
             if (smartReviewEnabled) {
