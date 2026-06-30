@@ -1391,6 +1391,11 @@ object QuizRepository {
                 }.map { it.id }.toSet()
                 wrongBook.filter { it.bankId in bankIds }
             }
+            WRONG_BOOK_SCOPE_BANK -> {
+                val bankId = wrongBookScopeBankId
+                if (bankId.isBlank()) return wrongBook.toList()
+                wrongBook.filter { it.bankId == bankId }
+            }
             else -> wrongBook.toList()
         }
     }
