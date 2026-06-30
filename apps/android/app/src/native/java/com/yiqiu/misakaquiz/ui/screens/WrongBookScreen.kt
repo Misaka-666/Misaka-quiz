@@ -100,6 +100,12 @@ fun WrongBookScreen(
     val smartReviewEnabled = QuizRepository.wrongBookSmartReviewEnabled
     val smartReviewSummary = QuizRepository.todayWrongBookSmartReviewSummary()
     val isCurrentBankScope = scopeMode == QuizRepository.WRONG_BOOK_SCOPE_CURRENT_BANK
+    val isSpecificScope = isCurrentBankScope || scopeMode == QuizRepository.WRONG_BOOK_SCOPE_BANK
+    val clearScopeLabel = when {
+        isCurrentBankScope -> "当前题库"
+        scopeMode == QuizRepository.WRONG_BOOK_SCOPE_BANK -> scopeLabel
+        else -> "全部"
+    }
 
     if (showScopePicker) {
         val scopeGroups = allWrongBook.mapNotNull { entry ->
@@ -207,13 +213,13 @@ fun WrongBookScreen(
 
     if (showClearWrongBookConfirm) {
         MisakaDangerConfirmDialog(
-            title = if (isCurrentBankScope) "确认清空当前题库错题？" else "确认清空全部错题？",
-            message = if (isCurrentBankScope) {
-                "这会移除当前题库错题记录，包括错题次数、掌握状态和复习统计。其他题库错题不会受影响。"
+            title = if (isSpecificScope) "确认清空${clearScopeLabel}错题？" else "确认清空全部错题？",
+            message = if (isSpecificScope) {
+                "这会移除${clearScopeLabel}错题记录，包括错题次数、掌握状态和复习统计。其他题库错题不会受影响。"
             } else {
                 "这会移除全部题库的错题记录，包括错题次数、掌握状态和复习统计。操作不可撤销。"
             },
-            confirmText = if (isCurrentBankScope) "清空当前题库" else "清空全部",
+            confirmText = if (isSpecificScope) "清空${clearScopeLabel}" else "清空全部",
             onDismiss = { showClearWrongBookConfirm = false },
             onConfirm = {
                 QuizRepository.clearWrongBookForCurrentScope()
