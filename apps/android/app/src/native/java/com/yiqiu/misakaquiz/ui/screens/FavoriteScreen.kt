@@ -9,12 +9,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Tune
@@ -61,10 +64,15 @@ fun FavoriteScreen(
     val context = LocalContext.current
     val favorites = QuizRepository.favoriteQuestions.toList()
     var favGroupFilter by remember { mutableStateOf<String?>(null) }
+    var favBankFilter by remember { mutableStateOf<String?>(null) }
     var showFavGroupPicker by remember { mutableStateOf(false) }
 
-    val filtered = if (favGroupFilter == null) favorites else favorites.filter { entry ->
-        (QuizRepository.banks.find { it.id == entry.bankId }?.groupName?.ifBlank { "未分组" }) == favGroupFilter
+    val filtered = when {
+        favBankFilter != null -> favorites.filter { it.bankId == favBankFilter }
+        favGroupFilter != null -> favorites.filter { entry ->
+            (QuizRepository.banks.find { it.id == entry.bankId }?.groupName?.ifBlank { "未分组" }) == favGroupFilter
+        }
+        else -> favorites
     }
 
     val favGroups = favorites.mapNotNull { entry ->
@@ -72,6 +80,7 @@ fun FavoriteScreen(
     }.distinct().sortedWith(compareBy<String> { it == "未分组" }.thenBy { it })
 
     if (showFavGroupPicker) {
+        var expandedPickerGroups by remember { mutableStateOf(setOf<String>()) }
         AlertDialog(
             onDismissRequest = { showFavGroupPicker = false },
             title = { Text("选择分组") },
@@ -83,10 +92,11 @@ fun FavoriteScreen(
                             .fillMaxWidth()
                             .misakaNoRippleClickable {
                                 favGroupFilter = null
+                                favBankFilter = null
                                 showFavGroupPicker = false
                             },
                         shape = RoundedCornerShape(12.dp),
-                        color = if (favGroupFilter == null)
+                        color = if (favGroupFilter == null && favBankFilter == null)
                             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                         else Color.Transparent
                     ) {
@@ -98,7 +108,7 @@ fun FavoriteScreen(
                                 "全部",
                                 modifier = Modifier.weight(1f),
                                 style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = if (favGroupFilter == null) FontWeight.SemiBold else FontWeight.Normal
+                                fontWeight = if (favGroupFilter == null && favBankFilter == null) FontWeight.SemiBold else FontWeight.Normal
                             )
                             Text(
                                 "${favorites.size}题",
@@ -108,36 +118,63 @@ fun FavoriteScreen(
                         }
                     }
                     favGroups.forEach { group ->
-                        val count = favorites.count { entry ->
+                        val banksInGroup = QuizRepository.banks.filter {
+                            (it.groupName.ifBlank { "未分组" }) == group
+                        }
+                        val groupCount = favorites.count { entry ->
                             (QuizRepository.banks.find { it.id == entry.bankId }?.groupName?.ifBlank { "未分组" }) == group
                         }
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .misakaNoRippleClickable {
-                                    favGroupFilter = group
-                                    showFavGroupPicker = false
-                                },
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (favGroupFilter == group)
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                            else Color.Transparent
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                        val isGroupSelected = favGroupFilter == group && favBankFilter == null
+                        val isExpanded = group in expandedPickerGroups
+                        // Group header
+                        Row(modifier = Modifier.fillMaxWidth().misakaNoRippleClickable {
+                            expandedPickerGroups = if (isExpanded) expandedPickerGroups - group else expandedPickerGroups + group
+                        }, verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isGroupSelected && !isExpanded) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
                             ) {
-                                Text(
-                                    group,
-                                    modifier = Modifier.weight(1f),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = if (favGroupFilter == group) FontWeight.SemiBold else FontWeight.Normal
-                                )
-                                Text(
-                                    "${count}题",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Row(
+                                    modifier = Modifier.misakaNoRippleClickable {
+                                        favGroupFilter = group
+                                        favBankFilter = null
+                                        showFavGroupPicker = false
+                                    }.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (isExpanded) Icons.Rounded.ExpandMore else Icons.Rounded.ChevronRight,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(group, style = MaterialTheme.typography.bodyLarge, fontWeight = if (isGroupSelected) FontWeight.SemiBold else FontWeight.Normal)
+                                    Spacer(Modifier.weight(1f))
+                                    Text("${groupCount}题", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                        // Bank sub-rows
+                        if (isExpanded) {
+                            banksInGroup.sortedBy { it.name }.forEach { bank ->
+                                val bankCount = favorites.count { it.bankId == bank.id }
+                                val isBankSelected = favBankFilter == bank.id
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth().padding(start = 28.dp).misakaNoRippleClickable {
+                                        favGroupFilter = null
+                                        favBankFilter = bank.id
+                                        showFavGroupPicker = false
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (isBankSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
+                                ) {
+                                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(bank.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = if (isBankSelected) FontWeight.SemiBold else FontWeight.Normal)
+                                        Text("${bankCount}题", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
                             }
                         }
                     }
@@ -191,7 +228,11 @@ fun FavoriteScreen(
                 Spacer(Modifier.weight(1f))
                 ActionPillButton(
                     icon = Icons.Rounded.Tune,
-                    text = favGroupFilter ?: "按分组",
+                    text = when {
+                        favBankFilter != null -> QuizRepository.banks.find { it.id == favBankFilter }?.name ?: "题库"
+                        favGroupFilter != null -> favGroupFilter!!
+                        else -> "按分组"
+                    },
                     primary = favGroupFilter != null,
                     modifier = Modifier.height(36.dp),
                     onClick = { showFavGroupPicker = true }
