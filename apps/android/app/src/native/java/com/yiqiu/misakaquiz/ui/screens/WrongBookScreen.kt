@@ -156,30 +156,25 @@ fun WrongBookScreen(
                         val isGroupSelected = scopeMode == QuizRepository.WRONG_BOOK_SCOPE_GROUP && QuizRepository.wrongBookScopeGroupName == group
                         val isExpanded = group in expandedPickerGroups
                         // Group header
-                        Row(modifier = Modifier.fillMaxWidth().misakaNoRippleClickable {
-                            expandedPickerGroups = if (isExpanded) expandedPickerGroups - group else expandedPickerGroups + group
-                        }, verticalAlignment = Alignment.CenterVertically) {
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = if (isExpanded) Icons.Rounded.ExpandMore else Icons.Rounded.ChevronRight,
+                                contentDescription = if (isExpanded) "收起" else "展开",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.misakaNoRippleClickable {
+                                    expandedPickerGroups = if (isExpanded) expandedPickerGroups - group else expandedPickerGroups + group
+                                }.size(28.dp).padding(4.dp)
+                            )
                             Surface(
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).misakaNoRippleClickable {
+                                    QuizRepository.setWrongBookScopeMode(context, QuizRepository.WRONG_BOOK_SCOPE_GROUP, group)
+                                    showScopePicker = false
+                                },
                                 shape = RoundedCornerShape(12.dp),
-                                color = if (isGroupSelected && !isExpanded) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
+                                color = if (isGroupSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
                             ) {
-                                Row(
-                                    modifier = Modifier.misakaNoRippleClickable {
-                                        QuizRepository.setWrongBookScopeMode(context, QuizRepository.WRONG_BOOK_SCOPE_GROUP, group)
-                                        showScopePicker = false
-                                    }.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = if (isExpanded) Icons.Rounded.ExpandMore else Icons.Rounded.ChevronRight,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(group, style = MaterialTheme.typography.bodyLarge, fontWeight = if (isGroupSelected) FontWeight.SemiBold else FontWeight.Normal)
-                                    Spacer(Modifier.weight(1f))
+                                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(group, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, fontWeight = if (isGroupSelected) FontWeight.SemiBold else FontWeight.Normal)
                                     Text("${groupCount}题", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
