@@ -412,12 +412,14 @@ fun BankListScreen(
                                                 )
                                             },
                                             onDone = { result ->
-                                                batchStates[bank.id] = batchStates[bank.id]!!.copy(
+                                                val prev = batchStates[bank.id] ?: return@launchBankAnalysis
+                                                batchStates[bank.id] = prev.copy(
                                                     result = result, analyzing = false
                                                 )
                                             },
                                             onError = { error ->
-                                                batchStates[bank.id] = batchStates[bank.id]!!.copy(
+                                                val prev = batchStates[bank.id] ?: return@launchBankAnalysis
+                                                batchStates[bank.id] = prev.copy(
                                                     error = error, analyzing = false, streamReasoning = "", streamContent = ""
                                                 )
                                             }
@@ -556,7 +558,8 @@ fun BankListScreen(
             onRefreshBank = { bankId ->
                 val bank = QuizRepository.banks.find { it.id == bankId } ?: return@BatchAiAnalysisDialog
                 MisakaAiClient.clearBankAnalysis(context, bankId)
-                batchStates[bankId] = batchStates[bankId]!!.copy(
+                val prev = batchStates[bankId] ?: return@BatchAiAnalysisDialog
+                batchStates[bankId] = prev.copy(
                     analyzing = true, error = null, result = null, streamReasoning = "", streamContent = ""
                 )
                 scope.launch {
@@ -566,20 +569,20 @@ fun BankListScreen(
                         questions = bank.questions,
                         bankName = bank.name,
                         onReasoning = { c ->
-                            batchStates[bankId] = batchStates[bankId]!!.copy(
-                                streamReasoning = batchStates[bankId]!!.streamReasoning + c
-                            )
+                            val ps = batchStates[bankId] ?: return@launchBankAnalysis
+                            batchStates[bankId] = ps.copy(streamReasoning = ps.streamReasoning + c)
                         },
                         onContent = { c ->
-                            batchStates[bankId] = batchStates[bankId]!!.copy(streamContent = c)
+                            val ps = batchStates[bankId] ?: return@launchBankAnalysis
+                            batchStates[bankId] = ps.copy(streamContent = c)
                         },
                         onDone = { result ->
-                            batchStates[bankId] = batchStates[bankId]!!.copy(
-                                result = result, analyzing = false
-                            )
+                            val ps = batchStates[bankId] ?: return@launchBankAnalysis
+                            batchStates[bankId] = ps.copy(result = result, analyzing = false)
                         },
                         onError = { error ->
-                            batchStates[bankId] = batchStates[bankId]!!.copy(
+                            val ps = batchStates[bankId] ?: return@launchBankAnalysis
+                            batchStates[bankId] = ps.copy(
                                 error = error, analyzing = false, streamReasoning = "", streamContent = ""
                             )
                         }
