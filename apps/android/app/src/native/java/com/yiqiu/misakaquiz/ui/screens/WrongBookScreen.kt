@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,10 +18,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -101,6 +105,8 @@ fun WrongBookScreen(
         val scopeGroups = allWrongBook.mapNotNull { entry ->
             QuizRepository.banks.find { it.id == entry.bankId }?.groupName?.ifBlank { "未分组" }
         }.distinct().sortedWith(compareBy<String> { it == "未分组" }.thenBy { it })
+        // 分组下的题库
+        var expandedPickerGroups by remember { mutableStateOf(setOf<String>()) }
         AlertDialog(
             onDismissRequest = { showScopePicker = false },
             title = { Text("错题范围") },
@@ -135,21 +141,61 @@ fun WrongBookScreen(
                         }
                     }
                     scopeGroups.forEach { group ->
-                        val count = allWrongBook.count { entry ->
+                        val banksInGroup = QuizRepository.banks.filter {
+                            (it.groupName.ifBlank { "未分组" }) == group
+                        }
+                        val groupCount = allWrongBook.count { entry ->
                             (QuizRepository.banks.find { it.id == entry.bankId }?.groupName?.ifBlank { "未分组" }) == group
                         }
-                        val isSelected = scopeMode == QuizRepository.WRONG_BOOK_SCOPE_GROUP && QuizRepository.wrongBookScopeGroupName == group
-                        Surface(
-                            modifier = Modifier.fillMaxWidth().misakaNoRippleClickable {
-                                QuizRepository.setWrongBookScopeMode(context, QuizRepository.WRONG_BOOK_SCOPE_GROUP, group)
-                                showScopePicker = false
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
-                        ) {
-                            Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(group, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
-                                Text("${count}题", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        val isGroupSelected = scopeMode == QuizRepository.WRONG_BOOK_SCOPE_GROUP && QuizRepository.wrongBookScopeGroupName == group
+                        val isExpanded = group in expandedPickerGroups
+                        // Group header
+                        Row(modifier = Modifier.fillMaxWidth().misakaNoRippleClickable {
+                            expandedPickerGroups = if (isExpanded) expandedPickerGroups - group else expandedPickerGroups + group
+                        }, verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isGroupSelected && !isExpanded) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
+                            ) {
+                                Row(
+                                    modifier = Modifier.misakaNoRippleClickable {
+                                        QuizRepository.setWrongBookScopeMode(context, QuizRepository.WRONG_BOOK_SCOPE_GROUP, group)
+                                        showScopePicker = false
+                                    }.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (isExpanded) Icons.Rounded.ExpandMore else Icons.Rounded.ChevronRight,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(group, style = MaterialTheme.typography.bodyLarge, fontWeight = if (isGroupSelected) FontWeight.SemiBold else FontWeight.Normal)
+                                    Spacer(Modifier.weight(1f))
+                                    Text("${groupCount}题", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                        // Bank sub-rows
+                        if (isExpanded) {
+                            banksInGroup.forEach { bank ->
+                                val bankCount = allWrongBook.count { it.bankId == bank.id }
+                                val isBankSelected = scopeMode == QuizRepository.WRONG_BOOK_SCOPE_BANK && QuizRepository.wrongBookScopeBankId == bank.id
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth().padding(start = 28.dp).misakaNoRippleClickable {
+                                        QuizRepository.setWrongBookScopeMode(context, QuizRepository.WRONG_BOOK_SCOPE_BANK, bank.id)
+                                        showScopePicker = false
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (isBankSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else Color.Transparent
+                                ) {
+                                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Text(bank.name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, fontWeight = if (isBankSelected) FontWeight.SemiBold else FontWeight.Normal)
+                                        Text("${bankCount}题", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
                             }
                         }
                     }

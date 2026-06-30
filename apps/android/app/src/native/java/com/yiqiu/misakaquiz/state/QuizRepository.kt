@@ -293,6 +293,8 @@ object QuizRepository {
         private set
     var wrongBookScopeGroupName by mutableStateOf("")
         private set
+    var wrongBookScopeBankId by mutableStateOf("")
+        private set
     var preferredPracticeQuestionCountMode by mutableStateOf("custom")
         private set
     var preferredPracticeCustomQuestionCount by mutableStateOf(20)
@@ -516,6 +518,7 @@ object QuizRepository {
             prefs.getString(KEY_WRONG_BOOK_SCOPE_MODE, WRONG_BOOK_SCOPE_ALL_BANKS) ?: WRONG_BOOK_SCOPE_ALL_BANKS
         )
         wrongBookScopeGroupName = prefs.getString(KEY_WRONG_BOOK_SCOPE_GROUP_NAME, "") ?: ""
+        wrongBookScopeBankId = prefs.getString(KEY_WRONG_BOOK_SCOPE_BANK_ID, "") ?: ""
         preferredPracticeQuestionCountMode = normalizePracticeCountMode(
             prefs.getString(KEY_PRACTICE_PREFERRED_COUNT_MODE, "custom") ?: "custom"
         )
@@ -1723,6 +1726,9 @@ object QuizRepository {
         wrongBookScopeMode = normalizeWrongBookScopeMode(mode)
         if (mode == WRONG_BOOK_SCOPE_GROUP && groupName != null) {
             wrongBookScopeGroupName = groupName
+        }
+        if (mode == WRONG_BOOK_SCOPE_BANK && groupName != null) {
+            wrongBookScopeBankId = groupName  // groupName param reused as bankId for BANK scope
         }
         persist()
     }
@@ -4215,6 +4221,7 @@ object QuizRepository {
             .putBoolean(KEY_WRONG_BOOK_SMART_REVIEW_ENABLED, wrongBookSmartReviewEnabled)
             .putString(KEY_WRONG_BOOK_SCOPE_MODE, wrongBookScopeMode)
             .putString(KEY_WRONG_BOOK_SCOPE_GROUP_NAME, wrongBookScopeGroupName)
+            .putString(KEY_WRONG_BOOK_SCOPE_BANK_ID, wrongBookScopeBankId)
             .putString(KEY_PRACTICE_PREFERRED_COUNT_MODE, preferredPracticeQuestionCountMode)
             .putInt(KEY_PRACTICE_PREFERRED_CUSTOM_COUNT, preferredPracticeCustomQuestionCount)
             .putString(KEY_PRACTICE_PREFERRED_ORDER_MODE, preferredPracticeOrderMode)
