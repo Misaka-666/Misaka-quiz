@@ -124,6 +124,7 @@
 
 | 版本 | 日期 | 变更 |
 | --- | --- | --- |
+| `v0.3.0-harmony` | 2026-09-12 | M2：解析器全量移植（18 组件 ≈5400 行 Kotlin → ArkTS 兼容 .ts）——叶子工具/题型标签/分区标题/答案解析/代码外形守卫/紧凑排版修复/题块拆分/多空填空/标准题解析/混合策略/答案区拆分/双文件合并/共享题干兜底/Excel 表格/整卷兜底/策略评分/导入校验/导入编排器；Node 回归 runner 复用 native-parser-regression 的 samples/expected，39 用例全绿（判定口径对齐 compare_regression.py：摘要级 + 逐题断言）；Index 页接入完整解析链路，ArkTS 编译 + 模拟器实测“解析器自检通过” |
 | `v0.2.0-harmony` | 2026-09-11 | M1：领域层落地——Models.ts 全套模型与序列化（字段/键省略规则与 Android backup.json 逐一对齐，null 即省略键）、FileStore 原子写 JSON 状态仓、QuizRepository 骨架（加载/持久化/题库 CRUD）、SettingsStore preferences 设置层；Node 往返测试 + 模拟器持久化实测（强杀重启数据保留） |
 | `v0.1.0-harmony` | 2026-09-11 | M0：`apps/harmony` 工程脚手架（ArkTS/ArkUI，API 26，bundleName `com.reqir.misakaquiz`）；三 spike 全通过——ParserUtils.ts 双端编译（hvigor + Node 24 + 真机）、@ohos.zlib ZIP 往返且产物过 Info-ZIP 跨端核验、requestInStream SSE 流式（模拟器经 10.0.2.2 访问宿主）；阔折叠模拟器（Pura X widefold）首启运行成功；着重阔折叠适配的移植计划落档（docs/harmony/移植进度.md） |
 

@@ -69,6 +69,12 @@ cd test/native-parser-regression
 # 详见 README.md（Kotlin runner 内嵌运行，无需 Python）
 ```
 
+HarmonyOS 解析器端口回归（同一份用例，Node 直跑 .ts）：
+
+```bash
+node --import ./test/harmony-parser-regression/ts-node.mjs test/harmony-parser-regression/run-regression.mjs
+```
+
 ---
 
 ## 项目结构

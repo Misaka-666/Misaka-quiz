@@ -1,4 +1,4 @@
-import { normalizeQuestionIndex, isJudgeOptionPair } from '../importer/parser/ParserUtils';
+import { parseStandardText } from '../importer/parser/QuizImportParser';
 import { runZlibSpike } from '../spike/ZlibSpike';
 import { runSseSpike } from '../spike/HttpSpike';
 import { QuizRepository } from '../state/QuizRepository';
@@ -7,17 +7,19 @@ import { common } from '@kit.AbilityKit';
 @Entry
 @Component
 struct Index {
-  private versionLabel: string = 'v0.2.0-harmony';
+  private versionLabel: string = 'v0.3.0-harmony';
   @State parserCheck: string = '未运行';
   @State zlibCheck: string = '未运行';
   @State sseCheck: string = '未运行';
   @State storeCheck: string = '未运行';
 
-  // M0 spike③: .ts 解析器源码被 hvigor 编译并调用，行为与 Android/Node 对齐
+  // M2: 完整解析器链路（18 个组件）在 HAP 内运行，行为与 Android 回归口径一致
   private parserSelfCheck(): void {
-    const ok = normalizeQuestionIndex('一百二十三') === '123' &&
-      isJudgeOptionPair(['a', 'b'], ['正确', '错误']);
-    this.parserCheck = ok ? '解析器自检通过' : '解析器自检失败';
+    const result = parseStandardText('1.下列哪项正确？\nA.第一项\nB.第二项\n答案：A\n解析：A正确');
+    const q = result.questions.length === 1 ? result.questions[0] : null;
+    const ok = q !== null && q.type === 'SINGLE' && q.answer.length === 1 && q.answer[0] === 'A' &&
+      q.analysis === 'A正确';
+    this.parserCheck = ok ? `解析器自检通过（${result.strategyName}）` : '解析器自检失败';
   }
 
   // M1：领域层持久化自检（创建示例题库→重启后仍可读到）
