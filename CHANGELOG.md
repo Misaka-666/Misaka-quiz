@@ -120,6 +120,12 @@
 | `v0.2.2-native` | 2026-05-11 | [29.0~30] 导入导出、刷题体验、卡片布局优化                                                                       |
 | `v0.2.0-native` | 2026-05-10 | [29.0~30] 原生 Compose 初始版本，UI 设计与功能实现                                                             |
 
+## HarmonyOS 版
+
+| 版本 | 日期 | 变更 |
+| --- | --- | --- |
+| `v0.1.0-harmony` | 2026-09-11 | M0：`apps/harmony` 工程脚手架（ArkTS/ArkUI，API 26，bundleName `com.reqir.misakaquiz`）；三 spike 全通过——ParserUtils.ts 双端编译（hvigor + Node 24 + 真机）、@ohos.zlib ZIP 往返且产物过 Info-ZIP 跨端核验、requestInStream SSE 流式（模拟器经 10.0.2.2 访问宿主）；阔折叠模拟器（Pura X widefold）首启运行成功；着重阔折叠适配的移植计划落档（docs/harmony/移植进度.md） |
+
 ## 统一发布
 
 | 版本            | 日期         | 说明                                                                  |

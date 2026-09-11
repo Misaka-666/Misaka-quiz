@@ -83,3 +83,6 @@ apps/server/
 # Server runtime
 *.sqlite
 .env
+
+# harmony dev scratch (screenshots, pulled zips)
+.hvigor-shots/

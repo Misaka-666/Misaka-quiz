@@ -52,6 +52,10 @@ npx serve apps/web
 # Android 原生版
 cd apps/android
 ./gradlew assembleNativeDebug
+
+# HarmonyOS 版（需 DevEco Studio / devecocli）
+cd apps/harmony
+devecocli build
 ```
 
 ---
@@ -72,13 +76,15 @@ cd test/native-parser-regression
 ```
 ├── apps/
 │   ├── web/                 # Web SPA (index.html + app.js + styles.css)
-│   └── android/             # Android Gradle 工程
-│       └── app/src/
-│           ├── main/        # Manifest、主题、启动图标
-│           ├── native/      # Native Compose 版（Kotlin 源码）
-│           └── web/         # WebView 壳版
+│   ├── android/             # Android Gradle 工程
+│   │   └── app/src/
+│   │       ├── main/        # Manifest、主题、启动图标
+│   │       ├── native/      # Native Compose 版（Kotlin 源码）
+│   │       └── web/         # WebView 壳版
+│   └── harmony/             # HarmonyOS ArkTS/ArkUI 工程（移植中，着重阔折叠适配）
 ├── test/
-│   └── native-parser-regression/  # 解析器回归测试
+│   ├── native-parser-regression/  # Android 解析器回归测试
+│   └── harmony-parser-regression/ # 鸿蒙解析器 Node 回归（复用同一份用例）
 ├── docs/                    # 使用文档、开发计划、架构说明
 └── CHANGELOG.md             # 版本更新记录
 ```
