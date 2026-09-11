@@ -1,21 +1,37 @@
 import { normalizeQuestionIndex, isJudgeOptionPair } from '../importer/parser/ParserUtils';
 import { runZlibSpike } from '../spike/ZlibSpike';
 import { runSseSpike } from '../spike/HttpSpike';
+import { QuizRepository } from '../state/QuizRepository';
 import { common } from '@kit.AbilityKit';
 
 @Entry
 @Component
 struct Index {
-  private versionLabel: string = 'v0.1.0-harmony';
+  private versionLabel: string = 'v0.2.0-harmony';
   @State parserCheck: string = '未运行';
   @State zlibCheck: string = '未运行';
   @State sseCheck: string = '未运行';
+  @State storeCheck: string = '未运行';
 
   // M0 spike③: .ts 解析器源码被 hvigor 编译并调用，行为与 Android/Node 对齐
   private parserSelfCheck(): void {
     const ok = normalizeQuestionIndex('一百二十三') === '123' &&
       isJudgeOptionPair(['a', 'b'], ['正确', '错误']);
     this.parserCheck = ok ? '解析器自检通过' : '解析器自检失败';
+  }
+
+  // M1：领域层持久化自检（创建示例题库→重启后仍可读到）
+  private storeSelfCheck(): void {
+    const repo = QuizRepository.getInstance();
+    if (repo.banks.length === 0) {
+      repo.createDemoBank();
+    }
+    const bank = repo.activeBank();
+    if (bank === null) {
+      this.storeCheck = '无题库';
+      return;
+    }
+    this.storeCheck = `题库=${repo.banks.length}(${bank.name}) 总题数=${repo.totalQuestionCount()}`;
   }
 
   private async runZlibSpike(): Promise<void> {
@@ -25,7 +41,9 @@ struct Index {
   }
 
   aboutToAppear(): void {
+    // Repository 已在 EntryAbility onCreate 初始化，这里只做展示层自检
     this.parserSelfCheck();
+    this.storeSelfCheck();
   }
 
   build() {
@@ -37,6 +55,9 @@ struct Index {
         .fontSize(14)
         .opacity(0.6)
       Text(this.parserCheck)
+        .fontSize(14)
+        .opacity(0.6)
+      Text(this.storeCheck)
         .fontSize(14)
         .opacity(0.6)
       Button('zlib 压缩解压往返')

@@ -16,6 +16,8 @@
 import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
+import { QuizRepository } from '../state/QuizRepository';
+import { SettingsStore } from '../state/SettingsStore';
 
 const DOMAIN = 0x0000;
 
@@ -26,6 +28,8 @@ export default class EntryAbility extends UIAbility {
     } catch (err) {
       hilog.error(DOMAIN, 'testTag', 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(err));
     }
+    QuizRepository.getInstance().init(this.context);
+    SettingsStore.init(this.context);
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
   }
 
