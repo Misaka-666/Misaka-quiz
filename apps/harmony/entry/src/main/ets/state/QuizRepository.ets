@@ -159,12 +159,11 @@ export class QuizRepository {
   // ---------- 题库 CRUD ----------
 
   importBank(name: string, groupName: string, questions: Question[]): QuizBank {
-    const bank = new QuizBank(util.generateRandomUUID(true), name, normalizeBankGroupName(groupName));
+    const cleanName = this.uniqueBankNameInGroup(name, groupName);
+    const bank = new QuizBank(util.generateRandomUUID(true), cleanName, normalizeBankGroupName(groupName));
     bank.questions = questions;
     this.banks.push(bank);
-    if (this.activeBankId.length === 0) {
-      this.activeBankId = bank.id;
-    }
+    this.activeBankId = bank.id;
     this.persist();
     return bank;
   }
@@ -206,6 +205,28 @@ export class QuizRepository {
       total += bank.questions.length;
     }
     return total;
+  }
+
+  // 组内重名时追加 " 2/3/..."（对齐 Android uniqueBankNameInGroup）
+  private uniqueBankNameInGroup(rawName: string, groupName: string): string {
+    const cleanGroupName = normalizeBankGroupName(groupName);
+    const baseName = rawName.trim().length > 0 ? rawName.trim() : '导入题库';
+    const existingNames = new Set<string>();
+    for (const bank of this.banks) {
+      if (normalizeBankGroupName(bank.groupName) === cleanGroupName) {
+        existingNames.add(bank.name);
+      }
+    }
+    if (!existingNames.has(baseName)) {
+      return baseName;
+    }
+    let index = 2;
+    let candidate = `${baseName} ${index}`;
+    while (existingNames.has(candidate)) {
+      index += 1;
+      candidate = `${baseName} ${index}`;
+    }
+    return candidate;
   }
 
   // 供 M1 设备自检：生成两道示例题并入库

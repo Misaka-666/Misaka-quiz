@@ -2,12 +2,13 @@ import { parseStandardText } from '../importer/parser/QuizImportParser';
 import { runZlibSpike } from '../spike/ZlibSpike';
 import { runSseSpike } from '../spike/HttpSpike';
 import { QuizRepository } from '../state/QuizRepository';
+import { router } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 
 @Entry
 @Component
 struct Index {
-  private versionLabel: string = 'v0.3.0-harmony';
+  private versionLabel: string = 'v0.4.0-harmony';
   @State parserCheck: string = '未运行';
   @State zlibCheck: string = '未运行';
   @State sseCheck: string = '未运行';
@@ -45,6 +46,10 @@ struct Index {
   aboutToAppear(): void {
     // Repository 已在 EntryAbility onCreate 初始化，这里只做展示层自检
     this.parserSelfCheck();
+  }
+
+  onPageShow(): void {
+    // 从导入页返回时刷新题库状态
     this.storeSelfCheck();
   }
 
@@ -62,6 +67,10 @@ struct Index {
       Text(this.storeCheck)
         .fontSize(14)
         .opacity(0.6)
+      Button('导入题库（M3）')
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/ImportPage' });
+        })
       Button('zlib 压缩解压往返')
         .onClick(() => {
           this.runZlibSpike();
