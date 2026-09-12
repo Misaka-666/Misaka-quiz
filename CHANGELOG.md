@@ -124,6 +124,7 @@
 
 | 版本 | 日期 | 变更 |
 | --- | --- | --- |
+| `v0.4.1-harmony` | 2026-09-12 | 修复：FileStore.readText 逐字节 fromCharCode 导致持久化中文读回乱码（题库名/题干等所有存储文本受影响）——改用 util.TextDecoder UTF-8 解码，同时消除大 state.json 的 spread 传参栈溢出风险；写入侧本就正确（UTF-8 字节），存量数据无需迁移，模拟器实测重启后题库名中文显示正常 |
 | `v0.4.0-harmony` | 2026-09-12 | M3：导入链路闭环——XmlDecoders.ts（Word 段落/OMML 公式/上下标/XLSX sharedStrings 表格的纯 XML 变换，Node 可测）、ImportDecoder.ets（zlib 解 ZIP + 目录遍历限额 + GB18030 回退 + 图片提取降采样 @ohos.multimedia.image）、QuestionImageBinder.ts（图片标记移除/题目绑定/材料题共享）、ImportPage 导入页（文件选择器含双文件、粘贴文本、rawfile 内置示例、预览列表 + 题干/答案/题型手动修正 + 删除题、入库）；题库重名自动加序号、导入即激活；模拟器实测：构造 docx（OMML/下标/图片）4 题全通、真实 Word docx 整卷兜底 9 题、xlsx 表格 2 题、入库后强杀重启数据保留；39 用例回归保持全绿 |
 | `v0.3.0-harmony` | 2026-09-12 | M2：解析器全量移植（18 组件 ≈5400 行 Kotlin → ArkTS 兼容 .ts）——叶子工具/题型标签/分区标题/答案解析/代码外形守卫/紧凑排版修复/题块拆分/多空填空/标准题解析/混合策略/答案区拆分/双文件合并/共享题干兜底/Excel 表格/整卷兜底/策略评分/导入校验/导入编排器；Node 回归 runner 复用 native-parser-regression 的 samples/expected，39 用例全绿（判定口径对齐 compare_regression.py：摘要级 + 逐题断言）；Index 页接入完整解析链路，ArkTS 编译 + 模拟器实测“解析器自检通过” |
 | `v0.2.0-harmony` | 2026-09-11 | M1：领域层落地——Models.ts 全套模型与序列化（字段/键省略规则与 Android backup.json 逐一对齐，null 即省略键）、FileStore 原子写 JSON 状态仓、QuizRepository 骨架（加载/持久化/题库 CRUD）、SettingsStore preferences 设置层；Node 往返测试 + 模拟器持久化实测（强杀重启数据保留） |

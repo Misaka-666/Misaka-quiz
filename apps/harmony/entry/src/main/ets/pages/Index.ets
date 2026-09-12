@@ -8,7 +8,7 @@ import { common } from '@kit.AbilityKit';
 @Entry
 @Component
 struct Index {
-  private versionLabel: string = 'v0.4.0-harmony';
+  private versionLabel: string = 'v0.4.1-harmony';
   @State parserCheck: string = '未运行';
   @State zlibCheck: string = '未运行';
   @State sseCheck: string = '未运行';

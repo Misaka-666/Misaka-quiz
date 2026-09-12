@@ -1,4 +1,5 @@
 import { fileIo } from '@kit.CoreFileKit';
+import { util } from '@kit.ArkTS';
 
 /**
  * JSON 文件状态仓 — 替代 Android 的 SharedPreferences 大 JSON 方案。
@@ -16,7 +17,9 @@ export class FileStore {
         const stat = fileIo.statSync(path);
         const buf = new ArrayBuffer(stat.size);
         fileIo.readSync(file.fd, buf);
-        return String.fromCharCode(...new Uint8Array(buf));
+        // 必须 UTF-8 解码：逐字节 fromCharCode 会把中文读成乱码，
+        // 且 spread 传参在大文件上有调用栈溢出风险
+        return util.TextDecoder.create('utf-8').decodeWithStream(new Uint8Array(buf));
       } finally {
         fileIo.closeSync(file);
       }
