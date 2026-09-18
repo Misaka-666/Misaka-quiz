@@ -29,7 +29,10 @@ export default class EntryAbility extends UIAbility {
       hilog.error(DOMAIN, 'testTag', 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(err));
     }
     QuizRepository.getInstance().init(this.context);
-    SettingsStore.init(this.context);
+    // preferences 是异步打开的：就绪后回灌设置（此前 AppSettings.load 读到默认值）
+    SettingsStore.init(this.context).then((): void => {
+      QuizRepository.getInstance().loadSettings();
+    });
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
   }
 

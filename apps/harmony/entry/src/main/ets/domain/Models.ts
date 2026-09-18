@@ -808,3 +808,37 @@ export function parseStudyRecord(raw: Object): StudyRecord | null {
 export function hasStructuredBlankAnswers(q: Question): boolean {
   return q.blankAnswers.length > 0;
 }
+
+/**
+ * 解析 web 端题库 JSON（{meta,questions:[...]}，答案在 answerKeys 字段）。
+ * 内置 C1 题库与 web_backup 互通复用；纯函数，Node 可测。
+ */
+export function parseWebQuestionBank(raw: Object): QuizBank | null {
+  const json = raw as Record<string, Object>;
+  const rawQuestions: JsonValue = json['questions'];
+  if (!Array.isArray(rawQuestions) || rawQuestions.length === 0) {
+    return null;
+  }
+  const meta: JsonValue = json['meta'];
+  const title = isRecord(meta) ? optStr(meta as Record<string, Object>, 'title') : '';
+  const bank = new QuizBank('', title.length > 0 ? title : 'Web 题库', DEFAULT_BANK_GROUP_NAME);
+  for (const item of rawQuestions) {
+    if (!isRecord(item)) {
+      continue;
+    }
+    const question = parseQuestion(item);
+    const rawAnswerKeys: JsonValue = (item as Record<string, Object>)['answerKeys'];
+    if (question.answer.length === 0 && Array.isArray(rawAnswerKeys)) {
+      const keys: string[] = [];
+      for (const key of rawAnswerKeys) {
+        const s = typeof key === 'string' ? key : String(key);
+        if (s.trim().length > 0) {
+          keys.push(s.trim().toUpperCase());
+        }
+      }
+      question.answer = keys;
+    }
+    bank.questions.push(question);
+  }
+  return bank.questions.length > 0 ? bank : null;
+}

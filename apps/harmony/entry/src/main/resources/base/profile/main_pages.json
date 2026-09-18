@@ -1,6 +1,11 @@
 {
   "src": [
     "pages/Index",
-    "pages/ImportPage"
+    "pages/PracticePage",
+    "pages/ExamSetupPage",
+    "pages/ExamPage",
+    "pages/ExamResultPage",
+    "pages/BankListPage",
+    "pages/BankDetailPage"
   ]
 }

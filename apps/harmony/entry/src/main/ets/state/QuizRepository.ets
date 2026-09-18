@@ -1,13 +1,21 @@
 import { common } from '@kit.AbilityKit';
 import { util } from '@kit.ArkTS';
 import { FileStore } from './FileStore';
+import { SettingsStore } from './SettingsStore';
+import { AppSettings } from './AppSettings';
 import {
   QuizBank, Question, QuestionType, Option, WrongQuestionEntry, SlashedQuestionEntry,
   FavoriteQuestionEntry, StudyRecord, DEFAULT_BANK_GROUP_NAME, normalizeBankGroupName,
-  bankToJson, parseBank, wrongEntryToJson, parseWrongEntry, slashedEntryToJson,
+  bankToJson, parseBank, parseWebQuestionBank, wrongEntryToJson, parseWrongEntry, slashedEntryToJson,
   parseSlashedEntry, favoriteEntryToJson, parseFavoriteEntry, studyRecordToJson,
   parseStudyRecord
 } from '../domain/Models';
+import {
+  PracticeSessionCore, PracticeHost, PracticeQuestionSource, bankPoolSources,
+  PRACTICE_MODE_INSTANT, OBJECTIVE_QUESTION_TYPES, ALL_QUESTION_TYPES
+} from './PracticeSessionCore';
+import { ExamSessionCore } from './ExamSessionCore';
+import { questionKeyOf } from './WrongBookOps';
 
 const STATE_DIR = 'misaka';
 const STATE_FILE = `${STATE_DIR}/state.json`;
@@ -45,6 +53,9 @@ export class QuizRepository {
   favoriteQuestions: FavoriteQuestionEntry[] = [];
   studyRecords: StudyRecord[] = [];
   practiceSequentialProgress: Record<string, number> = {};
+  settings: AppSettings = new AppSettings();
+  practice: PracticeSessionCore = new PracticeSessionCore(new PracticeHost());
+  exam: ExamSessionCore = new ExamSessionCore(new PracticeHost());
 
   static getInstance(): QuizRepository {
     if (QuizRepository.instance === null) {
@@ -58,6 +69,113 @@ export class QuizRepository {
     const state = FileStore.readJson(context.filesDir, STATE_FILE);
     if (state !== null) {
       this.loadFromState(state);
+    }
+    this.settings = AppSettings.load();
+    const host = this.buildHost();
+    this.practice = new PracticeSessionCore(host);
+    this.exam = new ExamSessionCore(host);
+    this.exam.examOptionShufflePrefEnabled = this.settings.examOptionShuffleEnabled;
+  }
+
+  /** preferences 就绪后重读设置（EntryAbility 回调） */
+  loadSettings(): void {
+    this.settings = AppSettings.load();
+    this.exam.examOptionShufflePrefEnabled = this.settings.examOptionShuffleEnabled;
+  }
+
+  /** 会话核心的仓库侧钩子：题库/错题本/收藏/记录/顺序进度/持久化 */
+  private buildHost(): PracticeHost {
+    const repo = this;
+    const host = new PracticeHost();
+    host.banks = (): QuizBank[] => repo.banks;
+    host.activeBankId = (): string => repo.activeBankId;
+    host.wrongBook = (): WrongQuestionEntry[] => repo.wrongBook;
+    host.slashedQuestions = (): SlashedQuestionEntry[] => repo.slashedQuestions;
+    host.favoriteQuestions = (): FavoriteQuestionEntry[] => repo.favoriteQuestions;
+    host.isSlashed = (bankId: string, question: Question): boolean => repo.isQuestionSlashed(bankId, question);
+    host.addRecord = (record: StudyRecord): void => {
+      repo.studyRecords.unshift(record);
+    };
+    host.sequentialProgress = (key: string): number | null => {
+      const value = repo.practiceSequentialProgress[key];
+      return value !== undefined ? value : null;
+    };
+    host.setSequentialProgress = (key: string, value: number): void => {
+      repo.practiceSequentialProgress[key] = value;
+    };
+    host.now = (): number => Date.now();
+    host.persist = (): void => {
+      repo.persist();
+    };
+    return host;
+  }
+
+  // ---------- 练习/考试入口（M4） ----------
+
+  isQuestionSlashed(bankId: string, question: Question): boolean {
+    const key = questionKeyOf(question);
+    return this.slashedQuestions.some((entry): boolean => entry.bankId === bankId && entry.questionKey === key);
+  }
+
+  restoreSlashed(bankId: string, question: Question): boolean {
+    const key = questionKeyOf(question);
+    const before = this.slashedQuestions.length;
+    this.slashedQuestions = this.slashedQuestions.filter((entry): boolean => !(entry.bankId === bankId && entry.questionKey === key));
+    if (this.slashedQuestions.length !== before) {
+      this.persist();
+      return true;
+    }
+    return false;
+  }
+
+  /** 当前练习池（活动题库，过滤斩题）；等价 Android 单库作用域 activePracticePoolSources */
+  poolSources(): PracticeQuestionSource[] {
+    const bank = this.activeBank();
+    return bank !== null
+      ? bankPoolSources(bank, (bankId: string, question: Question): boolean => this.isQuestionSlashed(bankId, question))
+      : [];
+  }
+
+  poolTypeCounts(): Map<string, number> {
+    const counts = new Map<string, number>();
+    for (const type of ALL_QUESTION_TYPES) {
+      counts.set(type, 0);
+    }
+    for (const source of this.poolSources()) {
+      counts.set(source.question.type, (counts.get(source.question.type) as number) + 1);
+    }
+    return counts;
+  }
+
+  sequentialProgressKey(): string {
+    const bank = this.activeBank();
+    return `BANK:${bank !== null ? bank.id : ''}`;
+  }
+
+  sequentialProgressValue(): number {
+    const value = this.practiceSequentialProgress[this.sequentialProgressKey()];
+    return value !== undefined ? value : 0;
+  }
+
+  resetSequentialProgress(): void {
+    this.practiceSequentialProgress[this.sequentialProgressKey()] = 0;
+    this.persist();
+  }
+
+  importWebBankJson(rawText: string, fallbackName: string): QuizBank | null {
+    try {
+      const parsed: Object | null = JSON.parse(rawText) as Object;
+      const bank = parseWebQuestionBank(parsed);
+      if (bank === null) {
+        return null;
+      }
+      bank.id = util.generateRandomUUID(true);
+      if (bank.name.trim().length === 0) {
+        bank.name = fallbackName;
+      }
+      return this.importBank(bank.name, DEFAULT_BANK_GROUP_NAME, bank.questions);
+    } catch (_err) {
+      return null;
     }
   }
 

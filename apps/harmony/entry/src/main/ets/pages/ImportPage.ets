@@ -1,9 +1,9 @@
 /**
- * M3 导入页：文件选择/粘贴文本 → 解码 → 解析 → 预览与手动修正 → 入库。
+ * M3 导入面板：文件选择/粘贴文本 → 解码 → 解析 → 预览与手动修正 → 入库。
  * 文件解码走 importer/ImportDecoder.ets，解析走 importer/parser/QuizImportParser.ts，
  * 图片绑定走 importer/assets/QuestionImageBinder.ts。
+ * M4 起作为 Index「导入」tab 的内嵌组件（无 @Entry，不占路由栈）。
  */
-import { router } from '@kit.ArkUI';
 import { picker } from '@kit.CoreFileKit';
 import { common } from '@kit.AbilityKit';
 import { decodeImportFile, readUriBytes, baseNameOf, ImportedContent } from '../importer/ImportDecoder';
@@ -26,9 +26,8 @@ class SecondFilePayload {
   }
 }
 
-@Entry
 @Component
-struct ImportPage {
+export struct ImportPage {
   @State bankName: string = '';
   @State statusText: string = '选择 docx / xlsx / txt 文件，或粘贴题目文本';
   @State busy: boolean = false;
@@ -204,9 +203,6 @@ struct ImportPage {
     const name = this.bankName.trim().length > 0 ? this.bankName.trim() : '导入题库';
     const bank = repo.importBank(name, DEFAULT_BANK_GROUP_NAME, this.result.questions);
     this.statusText = `已导入「${bank.name}」（${bank.questions.length} 题）`;
-    setTimeout((): void => {
-      router.back();
-    }, 600);
   }
 
   @Builder
