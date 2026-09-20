@@ -288,16 +288,16 @@ struct Index {
         router.pushUrl({ url: 'pages/BankListPage' });
       })
       this.shortcutCard('错题本', `${this.repo.wrongBook.length} 题`, (): void => {
-        this.getUIContext().getPromptAction().showToast({ message: '错题本将在 M5 上线' });
+            router.pushUrl({ url: 'pages/WrongBookPage' });
       })
     }
     .width('100%')
     Row({ space: 10 }) {
       this.shortcutCard('收藏夹', `${this.repo.favoriteQuestions.length} 题`, (): void => {
-        this.getUIContext().getPromptAction().showToast({ message: '收藏夹将在 M5 上线' });
+            router.pushUrl({ url: 'pages/FavoritePage' });
       })
       this.shortcutCard('学习记录', `${this.repo.studyRecords.length} 条`, (): void => {
-        this.getUIContext().getPromptAction().showToast({ message: '学习记录将在 M5 上线' });
+            router.pushUrl({ url: 'pages/RecordsPage' });
       })
     }    .width('100%')
 

@@ -37,6 +37,17 @@ export const KEY_EXAM_PREFERRED_TYPE_SCORES = 'exam_preferred_type_scores';
 export const KEY_QUESTION_FONT_SIZE_MODE = 'question_font_size_mode';
 export const KEY_OPTION_FONT_SIZE_MODE = 'option_font_size_mode';
 export const KEY_COMPACT_OPTIONS_ENABLED = 'compact_options_enabled';
+export const KEY_WRONG_BOOK_SMART_REVIEW_ENABLED = 'wrong_book_smart_review_enabled';
+export const KEY_WRONG_BOOK_SCOPE_MODE = 'wrong_book_scope_mode';
+export const KEY_WRONG_BOOK_SCOPE_GROUP_NAME = 'wrong_book_scope_group_name';
+export const KEY_WRONG_BOOK_SCOPE_BANK_ID = 'wrong_book_scope_bank_id';
+
+export function normalizeWrongBookScopeMode(mode: string): string {
+  if (mode === 'current_bank' || mode === 'group' || mode === 'bank') {
+    return mode;
+  }
+  return 'all_banks';
+}
 
 export function normalizePracticeCountMode(mode: string): string {
   if (mode === '50' || mode === '100' || mode === 'half' || mode === 'all') {
@@ -130,6 +141,10 @@ export class AppSettings {
   questionFontSizeMode = 'standard';
   optionFontSizeMode = 'standard';
   compactOptionsEnabled = false;
+  wrongBookSmartReviewEnabled = false;
+  wrongBookScopeMode = 'all_banks';
+  wrongBookScopeGroupName = '';
+  wrongBookScopeBankId = '';
 
   static load(): AppSettings {
     const s = new AppSettings();
@@ -170,6 +185,11 @@ export class AppSettings {
     s.questionFontSizeMode = SettingsStore.getString(KEY_QUESTION_FONT_SIZE_MODE, 'standard');
     s.optionFontSizeMode = SettingsStore.getString(KEY_OPTION_FONT_SIZE_MODE, 'standard');
     s.compactOptionsEnabled = SettingsStore.getBool(KEY_COMPACT_OPTIONS_ENABLED, false);
+    s.wrongBookSmartReviewEnabled = SettingsStore.getBool(KEY_WRONG_BOOK_SMART_REVIEW_ENABLED, false);
+    s.wrongBookScopeMode = normalizeWrongBookScopeMode(
+      SettingsStore.getString(KEY_WRONG_BOOK_SCOPE_MODE, 'all_banks'));
+    s.wrongBookScopeGroupName = SettingsStore.getString(KEY_WRONG_BOOK_SCOPE_GROUP_NAME, '');
+    s.wrongBookScopeBankId = SettingsStore.getString(KEY_WRONG_BOOK_SCOPE_BANK_ID, '');
     return s;
   }
 

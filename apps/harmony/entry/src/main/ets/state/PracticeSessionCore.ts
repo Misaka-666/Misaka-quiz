@@ -178,6 +178,8 @@ export class PracticeSessionCore {
     }
     this.sessionScopeType = sessionScopeType !== null && sessionScopeType.length > 0 ? sessionScopeType : null;
     this.sessionScopeName = sessionScopeName !== null && sessionScopeName.length > 0 ? sessionScopeName : null;
+    // Android practiceSourceLabel：特殊会话（错题本/今日复习/收藏夹）决定记录 source，其余为范围名
+    this.sourceLabel = this.sessionScopeName !== null ? this.sessionScopeName : '当前题库';
     this.startedAt = this.host.now();
     this.sequentialBankId = null;
     this.sequentialStartIndex = null;

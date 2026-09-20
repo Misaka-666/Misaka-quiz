@@ -5,7 +5,7 @@ import { SettingsStore } from './SettingsStore';
 import { AppSettings } from './AppSettings';
 import {
   QuizBank, Question, QuestionType, Option, WrongQuestionEntry, SlashedQuestionEntry,
-  FavoriteQuestionEntry, StudyRecord, DEFAULT_BANK_GROUP_NAME, normalizeBankGroupName,
+  FavoriteQuestionEntry, StudyRecord, WrongStatus, DEFAULT_BANK_GROUP_NAME, normalizeBankGroupName,
   bankToJson, parseBank, parseWebQuestionBank, wrongEntryToJson, parseWrongEntry, slashedEntryToJson,
   parseSlashedEntry, favoriteEntryToJson, parseFavoriteEntry, studyRecordToJson,
   parseStudyRecord
@@ -15,7 +15,26 @@ import {
   PRACTICE_MODE_INSTANT, OBJECTIVE_QUESTION_TYPES, ALL_QUESTION_TYPES
 } from './PracticeSessionCore';
 import { ExamSessionCore } from './ExamSessionCore';
-import { questionKeyOf } from './WrongBookOps';
+import {
+  questionKeyOf, filterWrongEntriesByScope, wrongBookScopeLabel, isWrongEntryDueForSmartReview,
+  sortTodaySmartReviewEntries, applyManualMastered, WRONG_BOOK_SCOPE_CURRENT_BANK,
+  WRONG_BOOK_SCOPE_BANK, WRONG_BOOK_SCOPE_GROUP
+} from './WrongBookOps';
+import {
+  KEY_WRONG_BOOK_SMART_REVIEW_ENABLED, KEY_WRONG_BOOK_SCOPE_MODE,
+  KEY_WRONG_BOOK_SCOPE_GROUP_NAME, KEY_WRONG_BOOK_SCOPE_BANK_ID
+} from './AppSettings';
+
+export class WrongBookSmartReviewSummary {
+  total: number;
+  notMastered: number;
+  masteredReview: number;
+  constructor(total: number, notMastered: number, masteredReview: number) {
+    this.total = total;
+    this.notMastered = notMastered;
+    this.masteredReview = masteredReview;
+  }
+}
 
 const STATE_DIR = 'misaka';
 const STATE_FILE = `${STATE_DIR}/state.json`;
@@ -160,6 +179,197 @@ export class QuizRepository {
   resetSequentialProgress(): void {
     this.practiceSequentialProgress[this.sequentialProgressKey()] = 0;
     this.persist();
+  }
+
+  // ---------- 错题本 / 收藏夹 / 学习记录（M5） ----------
+
+  wrongBookEntriesForScope(): WrongQuestionEntry[] {
+    const active = this.activeBank();
+    return filterWrongEntriesByScope(this.wrongBook, this.banks, active !== null ? active.id : null,
+      this.settings.wrongBookScopeMode, this.settings.wrongBookScopeGroupName, this.settings.wrongBookScopeBankId);
+  }
+
+  currentWrongBookScopeLabel(): string {
+    const active = this.activeBank();
+    return wrongBookScopeLabel(this.banks, active !== null ? active.name : null,
+      this.settings.wrongBookScopeMode, this.settings.wrongBookScopeGroupName, this.settings.wrongBookScopeBankId);
+  }
+
+  setWrongBookScopeMode(mode: string, groupName: string): void {
+    const s = this.settings;
+    s.wrongBookScopeMode = mode;
+    if (mode === WRONG_BOOK_SCOPE_GROUP) {
+      s.wrongBookScopeGroupName = groupName;
+    } else if (mode === WRONG_BOOK_SCOPE_BANK) {
+      s.wrongBookScopeBankId = groupName;
+    }
+    s.putString(KEY_WRONG_BOOK_SCOPE_MODE, mode);
+    s.putString(KEY_WRONG_BOOK_SCOPE_GROUP_NAME, s.wrongBookScopeGroupName);
+    s.putString(KEY_WRONG_BOOK_SCOPE_BANK_ID, s.wrongBookScopeBankId);
+  }
+
+  setWrongBookSmartReviewEnabled(enabled: boolean): void {
+    this.settings.wrongBookSmartReviewEnabled = enabled;
+    this.settings.putBool(KEY_WRONG_BOOK_SMART_REVIEW_ENABLED, enabled);
+  }
+
+  /** 待复习（未掌握 + 未斩题） */
+  reviewDueWrongEntries(): WrongQuestionEntry[] {
+    return this.wrongBookEntriesForScope()
+      .filter((entry): boolean => entry.status !== WrongStatus.MASTERED)
+      .filter((entry): boolean => !this.isQuestionSlashed(entry.bankId, entry.question));
+  }
+
+  todaySmartReviewEntries(): WrongQuestionEntry[] {
+    if (!this.settings.wrongBookSmartReviewEnabled) {
+      return [];
+    }
+    const now = Date.now();
+    const due = this.wrongBookEntriesForScope()
+      .filter((entry): boolean => !this.isQuestionSlashed(entry.bankId, entry.question))
+      .filter((entry): boolean => isWrongEntryDueForSmartReview(entry, now));
+    return sortTodaySmartReviewEntries(due);
+  }
+
+  todaySmartReviewSummary(): WrongBookSmartReviewSummary {
+    const entries = this.todaySmartReviewEntries();
+    let notMastered = 0;
+    for (const entry of entries) {
+      if (entry.status !== WrongStatus.MASTERED) {
+        notMastered += 1;
+      }
+    }
+    return new WrongBookSmartReviewSummary(entries.length, notMastered, entries.length - notMastered);
+  }
+
+  removeWrongQuestion(bankId: string, questionId: string): boolean {
+    const before = this.wrongBook.length;
+    this.wrongBook = this.wrongBook.filter((entry): boolean => !(entry.bankId === bankId && entry.question.id === questionId));
+    if (this.wrongBook.length !== before) {
+      this.persist();
+      return true;
+    }
+    return false;
+  }
+
+  markWrongQuestionMastered(bankId: string, questionId: string, mastered: boolean): boolean {
+    const changed = applyManualMastered(this.wrongBook, bankId, questionId, mastered, Date.now());
+    if (changed) {
+      this.persist();
+    }
+    return changed;
+  }
+
+  clearWrongBookForScope(): void {
+    const mode = this.settings.wrongBookScopeMode;
+    if (mode === WRONG_BOOK_SCOPE_CURRENT_BANK) {
+      const active = this.activeBank();
+      if (active !== null) {
+        this.wrongBook = this.wrongBook.filter((entry): boolean => entry.bankId !== active.id);
+      }
+    } else if (mode === WRONG_BOOK_SCOPE_GROUP) {
+      const group = this.settings.wrongBookScopeGroupName.trim().length > 0
+        ? this.settings.wrongBookScopeGroupName.trim() : DEFAULT_BANK_GROUP_NAME;
+      if (group === DEFAULT_BANK_GROUP_NAME) {
+        this.wrongBook = [];
+      } else {
+        const ids = new Set<string>(this.banks.filter((bank): boolean => bank.groupName === group)
+          .map((bank): string => bank.id));
+        this.wrongBook = this.wrongBook.filter((entry): boolean => !ids.has(entry.bankId));
+      }
+    } else if (mode === WRONG_BOOK_SCOPE_BANK) {
+      const bankId = this.settings.wrongBookScopeBankId;
+      this.wrongBook = this.wrongBook.filter((entry): boolean => entry.bankId !== bankId);
+    } else {
+      this.wrongBook = [];
+    }
+    this.persist();
+  }
+
+  /** 错题练习（默认刷当前筛选）；sourceLabel 决定记录来源（错题本/今日复习） */
+  startWrongBookPractice(entries: WrongQuestionEntry[], includeMastered: boolean, sourceLabel: string): boolean {
+    const selected = entries
+      .filter((entry): boolean => includeMastered || entry.status !== WrongStatus.MASTERED)
+      .filter((entry): boolean => !this.isQuestionSlashed(entry.bankId, entry.question));
+    return this.startSourceEntryPractice(selected.map((entry): PracticeQuestionSource =>
+      new PracticeQuestionSource(entry.bankId, entry.bankName, this.groupNameOfBank(entry.bankId), entry.question)
+    ), sourceLabel);
+  }
+
+  startTodayWrongBookReview(): boolean {
+    return this.startWrongBookPractice(this.todaySmartReviewEntries(), true, '今日复习');
+  }
+
+  /** 打开单道错题即时练习（等价 Android openWrongQuestion） */
+  openWrongQuestion(entry: WrongQuestionEntry): boolean {
+    const bank = this.banks.find((item): boolean => item.id === entry.bankId);
+    if (bank === undefined) {
+      return false;
+    }
+    const question = bank.questions.find((item): boolean => item.id === entry.question.id);
+    if (question === undefined) {
+      return false;
+    }
+    return this.startSourceEntryPractice(
+      [new PracticeQuestionSource(bank.id, bank.name, bank.groupName, question)], '错题本');
+  }
+
+  removeFavoriteQuestion(bankId: string, questionId: string): boolean {
+    const before = this.favoriteQuestions.length;
+    this.favoriteQuestions = this.favoriteQuestions.filter((entry): boolean =>
+      !(entry.bankId === bankId && entry.question.id === questionId));
+    if (this.favoriteQuestions.length !== before) {
+      this.persist();
+      return true;
+    }
+    return false;
+  }
+
+  startFavoritePractice(entries: FavoriteQuestionEntry[]): boolean {
+    return this.startSourceEntryPractice(entries.map((entry): PracticeQuestionSource =>
+      new PracticeQuestionSource(entry.bankId, entry.bankName, this.groupNameOfBank(entry.bankId), entry.question)
+    ), '收藏夹');
+  }
+
+  findStudyRecord(recordId: string): StudyRecord | null {
+    if (recordId.length === 0) {
+      return null;
+    }
+    const found = this.studyRecords.find((record): boolean => record.id === recordId);
+    return found !== undefined ? found : null;
+  }
+
+  deleteStudyRecord(recordId: string): boolean {
+    const before = this.studyRecords.length;
+    this.studyRecords = this.studyRecords.filter((record): boolean => record.id !== recordId);
+    if (this.studyRecords.length !== before) {
+      this.persist();
+      return true;
+    }
+    return false;
+  }
+
+  private groupNameOfBank(bankId: string): string {
+    const bank = this.banks.find((item): boolean => item.id === bankId);
+    return bank !== undefined ? bank.groupName : DEFAULT_BANK_GROUP_NAME;
+  }
+
+  /** 收藏/错题会话启动公共路径：全部题型、不乱序、即时判题、记录来源由 sourceLabel 决定 */
+  private startSourceEntryPractice(items: PracticeQuestionSource[], sourceLabel: string): boolean {
+    const seen = new Set<string>();
+    const distinct: PracticeQuestionSource[] = [];
+    for (const item of items) {
+      const key = `${item.bankId}#${item.question.id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        distinct.push(item);
+      }
+    }
+    if (distinct.length === 0) {
+      return false;
+    }
+    return this.practice.start(distinct, ALL_QUESTION_TYPES.slice(), false, PRACTICE_MODE_INSTANT,
+      this.settings.resolvePreferredBatchGroupSize(), null, sourceLabel);
   }
 
   importWebBankJson(rawText: string, fallbackName: string): QuizBank | null {

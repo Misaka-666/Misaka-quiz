@@ -53,6 +53,13 @@ struct BankListPage {
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
         Blank()
+        Text('搜索')
+          .fontSize(14)
+          .fontColor(MisakaColors.PRIMARY)
+          .padding({ left: 10, right: 10, top: 4, bottom: 4 })
+          .onClick((): void => {
+            router.pushUrl({ url: 'pages/QuestionSearchPage' });
+          })
         Text(`共 ${this.repo.banks.length} 库`)
           .fontSize(13)
           .fontColor(MisakaColors.TEXT_SUB)

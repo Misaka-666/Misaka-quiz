@@ -6,6 +6,11 @@
     "pages/ExamPage",
     "pages/ExamResultPage",
     "pages/BankListPage",
-    "pages/BankDetailPage"
+    "pages/BankDetailPage",
+    "pages/WrongBookPage",
+    "pages/FavoritePage",
+    "pages/RecordsPage",
+    "pages/RecordDetailPage",
+    "pages/QuestionSearchPage"
   ]
 }

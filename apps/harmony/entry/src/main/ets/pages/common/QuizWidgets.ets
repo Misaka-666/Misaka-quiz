@@ -39,6 +39,21 @@ export function formatClockSeconds(totalSeconds: number): string {
   return `${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 }
 
+function pad2(value: number): string {
+  return value < 10 ? `0${value}` : `${value}`;
+}
+
+/** MM-dd HH:mm（对齐 Android RecordsScreen.formatRecordTime） */
+export function formatShortTimestamp(timestamp: number): string {
+  const d = new Date(timestamp);
+  return `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+/** 得分 4 → "4"、4.5 → "4.5"（对齐 Android Double.trimScore） */
+export function formatScoreValue(value: number): string {
+  return value % 1.0 === 0.0 ? `${value}` : value.toFixed(1);
+}
+
 @Component
 export struct TypeBadge {
   @Prop type: string;
@@ -105,6 +120,48 @@ export struct SmallChip {
       .onClick((): void => {
         this.onTap();
       })
+  }
+}
+
+/** 只读状态标签（对齐 Android StatusChip） */
+@Component
+export struct StatusChip {
+  @Prop label: string;
+  @Prop tone: string = 'neutral'; // neutral / primary / green / red
+  build() {
+    Text(this.label)
+      .fontSize(11)
+      .fontColor(this.toneColor())
+      .backgroundColor(this.toneBg())
+      .borderRadius(6)
+      .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+      .maxLines(1)
+  }
+
+  private toneColor(): ResourceColor {
+    if (this.tone === 'primary') {
+      return MisakaColors.PRIMARY;
+    }
+    if (this.tone === 'green') {
+      return MisakaColors.GREEN;
+    }
+    if (this.tone === 'red') {
+      return MisakaColors.RED;
+    }
+    return MisakaColors.TEXT_SUB;
+  }
+
+  private toneBg(): ResourceColor {
+    if (this.tone === 'primary') {
+      return MisakaColors.PRIMARY_SOFT;
+    }
+    if (this.tone === 'green') {
+      return MisakaColors.GREEN_SOFT;
+    }
+    if (this.tone === 'red') {
+      return MisakaColors.RED_SOFT;
+    }
+    return '#F0F1F6';
   }
 }
 
