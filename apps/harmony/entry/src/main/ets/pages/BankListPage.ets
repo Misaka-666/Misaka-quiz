@@ -113,7 +113,7 @@ struct BankListPage {
             if (bank.id === this.repo.activeBankId) {
               Text('当前')
                 .fontSize(11)
-                .fontColor(Color.White)
+                .fontColor(MisakaColors.ON_BRAND)
                 .backgroundColor(MisakaColors.PRIMARY)
                 .borderRadius(6)
                 .padding({ left: 6, right: 6, top: 2, bottom: 2 })

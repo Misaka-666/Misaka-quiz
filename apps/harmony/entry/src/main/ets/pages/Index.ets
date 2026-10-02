@@ -1,11 +1,12 @@
 /**
- * M4 主壳 — 底部四 Tab（首页/练习/导入/我的），对齐 Android MisakaAppShell。
+ * M4 主壳（M7 体验完整度） — 底部四 Tab（首页/练习/导入/我的），对齐 Android MisakaAppShell。
  * 首页：数据快照 + 快捷入口 + 练习/考试入口；练习：设置面板（顺序/题量/题型/模式/背题）；
- * 导入：内嵌 ImportPage 面板 + 内置 C1 题库；我的：字号/刷题偏好/版本。
- * 阔折叠主线：练习/考试页内部做双栏；侧边导航 M7 完整化。
+ * 导入：内嵌 ImportPage 面板 + 内置 C1 题库；我的：外观/数据/关于入口 + 刷题偏好 + 版本。
+ * M7：暗色模式（资源 Token 自切，入口在外观偏好/我的快速切换）；阔折叠展开态（≥600vp 且开关开）
+ * 侧边导航替代底部栏；Misaka 模式开屏浮层（1450ms 保持 + 420ms 淡出，对齐 Android MisakaMotion）。
  * 注意：全局 @Builder 调用后不能链修饰符，宽/边距参数经 PillButton 的 grow/fixedWidth 传入。
  */
-import { router } from '@kit.ArkUI';
+import { router, mediaquery } from '@kit.ArkUI';
 import { util } from '@kit.ArkTS';
 import { resourceManager } from '@kit.LocalizationKit';
 import { common } from '@kit.AbilityKit';
@@ -17,19 +18,22 @@ import {
   PracticeQuestionSource
 } from '../state/PracticeSessionCore';
 import {
-  MisakaColors, PillButton, SmallChip, SettingToggleRow, InfoNotice, TYPE_COMPACT_LABELS
+  MisakaColors, PillButton, SmallChip, SettingToggleRow, InfoNotice, TYPE_COMPACT_LABELS, APP_VERSION_LABEL
 } from './common/QuizWidgets';
 import { ImportPage } from './ImportPage';
 import {
   KEY_PRACTICE_RECITE_MODE_ENABLED, KEY_PRACTICE_OPTION_SHUFFLE_ENABLED, KEY_PRACTICE_SLASH_ENABLED,
   KEY_PRACTICE_QUICK_EDIT_ENABLED, KEY_SWIPE_NAVIGATION_ENABLED, KEY_PRACTICE_AUTO_SUBMIT_ENABLED,
-  KEY_PRACTICE_AUTO_NEXT_ENABLED, KEY_PRACTICE_BATCH_AUTO_NEXT_ENABLED, KEY_QUESTION_FONT_SIZE_MODE,
-  KEY_OPTION_FONT_SIZE_MODE, KEY_PRACTICE_PREFERRED_COUNT_MODE, KEY_PRACTICE_PREFERRED_CUSTOM_COUNT,
+  KEY_PRACTICE_AUTO_NEXT_ENABLED, KEY_PRACTICE_BATCH_AUTO_NEXT_ENABLED,
+  KEY_PRACTICE_PREFERRED_COUNT_MODE, KEY_PRACTICE_PREFERRED_CUSTOM_COUNT,
   KEY_PRACTICE_PREFERRED_ORDER_MODE, KEY_PRACTICE_PREFERRED_MODE, KEY_PRACTICE_PREFERRED_BATCH_SIZE_MODE,
-  KEY_PRACTICE_PREFERRED_BATCH_CUSTOM_SIZE, KEY_PRACTICE_PREFERRED_TYPE_NAMES
+  KEY_PRACTICE_PREFERRED_BATCH_CUSTOM_SIZE, KEY_PRACTICE_PREFERRED_TYPE_NAMES,
+  KEY_DARK_THEME_ENABLED, applyAppColorMode
 } from '../state/AppSettings';
 
-const VERSION_LABEL = 'v0.7.0-harmony';
+// 对齐 Android MisakaMotion：开屏保持/淡出时长
+const SPLASH_HOLD_MILLIS = 1450;
+const SPLASH_FADE_MILLIS = 420;
 
 @Entry
 @Component
@@ -37,6 +41,13 @@ struct Index {
   private repo: QuizRepository = QuizRepository.getInstance();
   @State currentTab: number = 0;
   @State tick: number = 0;
+  @State isWide: boolean = false;
+  // 开屏浮层（Misaka 模式 + 保留开屏图时冷启动显示一次）
+  @State splashVisible: boolean = false;
+  @State splashOpacity: number = 1;
+  @State splashProgress: number = 0;
+  private wideListener: mediaquery.MediaQueryListener | null = null;
+  private splashLaunched: boolean = false;
   // 练习设置态（记住偏好）
   @State orderMode: string = PRACTICE_ORDER_RANDOM;
   @State startMode: string = SEQUENTIAL_START_LAST;
@@ -52,6 +63,46 @@ struct Index {
 
   private bump(): void {
     this.tick += 1;
+  }
+
+  private context(): common.UIAbilityContext {
+    return this.getUIContext().getHostContext() as common.UIAbilityContext;
+  }
+
+  private sideNavActive(): boolean {
+    return this.isWide && this.repo.settings.tabletSideNavigationEnabled;
+  }
+
+  // ---------- 深浅色 ----------
+
+  private toggleDarkTheme(): void {
+    const s = this.repo.settings;
+    s.darkThemeEnabled = !s.darkThemeEnabled;
+    s.putBool(KEY_DARK_THEME_ENABLED, s.darkThemeEnabled);
+    applyAppColorMode(this.context(), s.darkThemeEnabled);
+    this.bump();
+  }
+
+  // ---------- 开屏浮层 ----------
+
+  private startSplashIfNeeded(): void {
+    const s = this.repo.settings;
+    if (!(s.misakaModeEnabled && s.startupSplashEnabled)) {
+      return;
+    }
+    this.splashVisible = true;
+    this.splashProgress = 0;
+    this.getUIContext().animateTo({ duration: SPLASH_HOLD_MILLIS, curve: Curve.Linear }, (): void => {
+      this.splashProgress = 100;
+    });
+    setTimeout((): void => {
+      this.getUIContext().animateTo({ duration: SPLASH_FADE_MILLIS, curve: Curve.EaseOut }, (): void => {
+        this.splashOpacity = 0;
+      });
+    }, SPLASH_HOLD_MILLIS);
+    setTimeout((): void => {
+      this.splashVisible = false;
+    }, SPLASH_HOLD_MILLIS + SPLASH_FADE_MILLIS);
   }
 
   // ---------- 数据快照 ----------
@@ -220,11 +271,28 @@ struct Index {
 
   aboutToAppear(): void {
     this.loadPracticePreferences();
+    // 阔折叠展开态（≥600vp）启用侧边导航；折叠/半开自动回落底部栏
+    this.wideListener = mediaquery.matchMediaSync('(min-width: 600vp)');
+    this.isWide = this.wideListener.matches;
+    this.wideListener.on('change', (result: mediaquery.MediaQueryResult): void => {
+      this.isWide = result.matches;
+    });
+  }
+
+  aboutToDisappear(): void {
+    if (this.wideListener !== null) {
+      this.wideListener.off('change');
+    }
   }
 
   onPageShow(): void {
     this.loadPracticePreferences();
     this.bump();
+    // 仅冷启动决策一次，避免会话中途开启 Misaka 模式后返回首页又弹开屏
+    if (!this.splashLaunched) {
+      this.splashLaunched = true;
+      this.startSplashIfNeeded();
+    }
   }
 
   // ---------- Tab 内容 ----------
@@ -237,10 +305,10 @@ struct Index {
           Text('Misaka Quiz')
             .fontSize(26)
             .fontWeight(FontWeight.Bold)
-            .fontColor(Color.White)
-          Text(`${VERSION_LABEL} · 鸿蒙原生`)
+            .fontColor(MisakaColors.ON_BRAND)
+          Text(`${APP_VERSION_LABEL} · 鸿蒙原生`)
             .fontSize(13)
-            .fontColor('#D8DFF5')
+            .fontColor(MisakaColors.ON_BRAND_SUB)
         }
         .width('100%')
         .padding(24)
@@ -598,16 +666,75 @@ struct Index {
   meTab() {
     Scroll() {
       Column({ space: 14 }) {
-        Text('外观')
+        Row({ space: 12 }) {
+          Column({ space: 4 }) {
+            Text('Me')
+              .fontSize(13)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(MisakaColors.PRIMARY)
+            Text('设置与资料')
+              .fontSize(24)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(MisakaColors.TEXT)
+          }
+          .alignItems(HorizontalAlign.Start)
+          .layoutWeight(1)
+          Text(this.repo.settings.darkThemeEnabled ? '☀️ 浅色' : '🌙 暗色')
+            .fontSize(13)
+            .fontColor(MisakaColors.PRIMARY)
+            .backgroundColor(MisakaColors.PRIMARY_SOFT)
+            .borderRadius(18)
+            .padding({ left: 14, right: 14, top: 8, bottom: 8 })
+            .onClick((): void => {
+              this.toggleDarkTheme();
+            })
+        }
+        .width('100%')
+
+        // hero 卡：Misaka 模式开启时显示插画（对齐 Android IllustrationHeroCard + misaka 模式开关）
+        Row({ space: 14 }) {
+          Column({ space: 6 }) {
+            Text('我是Misaka')
+              .fontSize(18)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(MisakaColors.TEXT)
+            Text('欢迎关注，喜欢的话请给我⭐️⭐️')
+              .fontSize(12)
+              .fontColor(MisakaColors.TEXT_SUB)
+          }
+          .alignItems(HorizontalAlign.Start)
+          .layoutWeight(1)
+          if (this.repo.settings.misakaModeEnabled) {
+            Image($r('app.media.illus_me'))
+              .width(84)
+              .height(84)
+              .objectFit(ImageFit.Contain)
+              .borderRadius(12)
+          }
+        }
+        .width('100%')
+        .padding(16)
+        .backgroundColor(MisakaColors.PRIMARY_SOFT)
+        .borderRadius(18)
+        .alignItems(VerticalAlign.Center)
+
+        Text('功能与档案')
           .fontSize(15)
           .fontWeight(FontWeight.Medium)
-        Column() {
-          this.fontSizeRow('题干字号', 'question');
-          this.fontSizeRow('选项字号', 'option');
+        Column({ space: 4 }) {
+          this.meStrip('外观偏好', '主题、Misaka 模式、开屏图和侧边导航。', (): void => {
+            router.pushUrl({ url: 'pages/AppearancePage' });
+          })
+          this.meStrip('数据管理', '导入、导出、备份和清除本地数据。', (): void => {
+            router.pushUrl({ url: 'pages/DataManagerPage' });
+          })
+          this.meStrip('关于 Misaka Quiz', '项目地址、版本说明和开源信息。', (): void => {
+            router.pushUrl({ url: 'pages/AboutPage' });
+          })
         }
         .backgroundColor(MisakaColors.CARD)
         .borderRadius(12)
-        .padding(8)
+        .padding(4)
         .width('100%')
 
         Text('刷题偏好')
@@ -627,36 +754,7 @@ struct Index {
         .padding(8)
         .width('100%')
 
-        Text('数据')
-          .fontSize(15)
-          .fontWeight(FontWeight.Medium)
-        Column() {
-          Row() {
-            Column({ space: 2 }) {
-              Text('数据管理')
-                .fontSize(15)
-              Text('备份导出/导入、清除本地数据')
-                .fontSize(12)
-                .fontColor(MisakaColors.TEXT_SUB)
-            }
-            .alignItems(HorizontalAlign.Start)
-            .layoutWeight(1)
-            Text('›')
-              .fontSize(18)
-              .fontColor(MisakaColors.TEXT_SUB)
-          }
-          .width('100%')
-          .padding(12)
-          .onClick((): void => {
-            router.pushUrl({ url: 'pages/DataManagerPage' });
-          })
-        }
-        .backgroundColor(MisakaColors.CARD)
-        .borderRadius(12)
-        .padding(4)
-        .width('100%')
-
-        InfoNotice({ text: `Misaka Quiz ${VERSION_LABEL} · 鸿蒙原生\n解析器回归 39/39 · M5 学习管理 + M6 备份互通`, warning: false })
+        InfoNotice({ text: `Misaka Quiz ${APP_VERSION_LABEL} · 鸿蒙原生\n解析器回归 39/39 · M7 体验完整度（暗色/侧边导航/开屏）`, warning: false })
       }
       .padding(16)
       .width('100%')
@@ -667,30 +765,27 @@ struct Index {
   }
 
   @Builder
-  fontSizeRow(label: string, kind: string) {
-    Row({ space: 10 }) {
-      Text(label)
-        .fontSize(15)
-        .layoutWeight(1)
-      ForEach(['small', 'standard', 'large'], (mode: string) => {
-        SmallChip({ label: mode === 'small' ? '小' : (mode === 'large' ? '大' : '标准'), active: this.currentFontMode(kind) === mode, onTap: (): void => {
-          if (kind === 'question') {
-            this.repo.settings.questionFontSizeMode = mode;
-            this.repo.settings.putString(KEY_QUESTION_FONT_SIZE_MODE, mode);
-          } else {
-            this.repo.settings.optionFontSizeMode = mode;
-            this.repo.settings.putString(KEY_OPTION_FONT_SIZE_MODE, mode);
-          }
-          this.bump();
-        } })
-      }, (mode: string): string => `font-${kind}-${mode}`)
+  meStrip(title: string, desc: string, onTap: () => void) {
+    Row() {
+      Column({ space: 2 }) {
+        Text(title)
+          .fontSize(15)
+          .fontColor(MisakaColors.TEXT)
+        Text(desc)
+          .fontSize(12)
+          .fontColor(MisakaColors.TEXT_SUB)
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+      Text('›')
+        .fontSize(18)
+        .fontColor(MisakaColors.TEXT_SUB)
     }
     .width('100%')
-    .padding({ top: 6, bottom: 6 })
-  }
-
-  private currentFontMode(kind: string): string {
-    return kind === 'question' ? this.repo.settings.questionFontSizeMode : this.repo.settings.optionFontSizeMode;
+    .padding(12)
+    .onClick((): void => {
+      onTap();
+    })
   }
 
   @Builder
@@ -793,28 +888,134 @@ struct Index {
     }
   }
 
-  build() {
-    Column() {
-      Column() {
-        this.tabContent()
+  // 开屏浮层（对齐 Android MisakaSplashArtwork：整图 + 底部标题/进度条）
+  @Builder
+  splashOverlay() {
+    Stack() {
+      Image($r('app.media.illus_splash'))
+        .width('100%')
+        .height('100%')
+        .objectFit(ImageFit.Cover)
+      Column({ space: 10 }) {
+        Row({ space: 8 }) {
+          Text('Misaka')
+            .fontSize(41)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#1F5EA8')
+          Text('Quiz')
+            .fontSize(41)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FF78AD')
+        }
+        Text('让自律成为习惯，让成长看得见')
+          .fontSize(17)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#7C9ED6')
+        Progress({ value: this.splashProgress, total: 100, type: ProgressType.Linear })
+          .width('54%')
+          .height(18)
+          .color('#FF6EA7')
+          .backgroundColor('#FFFFFF76')
+          .borderRadius(9)
+          .margin({ top: 20, bottom: 24 })
+        Text('正在加载中…')
+          .fontSize(17)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#7C9ED6')
       }
-      .layoutWeight(1)
       .width('100%')
-
-      Divider()
-      Row() {
-        this.tabItem(0, '首页')
-        this.tabItem(1, '练习')
-        this.tabItem(2, '导入')
-        this.tabItem(3, '我的')
-      }
-      .width('100%')
-      .height(56)
-      .backgroundColor(MisakaColors.CARD)
+      .alignItems(HorizontalAlign.Center)
     }
     .width('100%')
     .height('100%')
     .backgroundColor(MisakaColors.BG)
+    .alignContent(Alignment.Bottom)
+    .padding({ bottom: 60 })
+    .opacity(this.splashOpacity)
+  }
+
+  build() {
+    Stack() {
+      if (this.sideNavActive()) {
+        Row() {
+          this.sideRail()
+          Divider()
+            .vertical(true)
+            .height('100%')
+          Column() {
+            this.tabContent()
+          }
+          .layoutWeight(1)
+          .width('100%')
+        }
+        .width('100%')
+        .height('100%')
+        .backgroundColor(MisakaColors.BG)
+      } else {
+        Column() {
+          Column() {
+            this.tabContent()
+          }
+          .layoutWeight(1)
+          .width('100%')
+
+          Divider()
+          Row() {
+            this.tabItem(0, '首页')
+            this.tabItem(1, '练习')
+            this.tabItem(2, '导入')
+            this.tabItem(3, '我的')
+          }
+          .width('100%')
+          .height(56)
+          .backgroundColor(MisakaColors.CARD)
+        }
+        .width('100%')
+        .height('100%')
+        .backgroundColor(MisakaColors.BG)
+      }
+
+      if (this.splashVisible) {
+        this.splashOverlay()
+      }
+    }
+    .width('100%')
+    .height('100%')
+  }
+
+  // 展开态侧边导航（对齐 Android MisakaSideNavigation：88dp Rail + 四根 Tab）
+  @Builder
+  sideRail() {
+    Column({ space: 4 }) {
+      this.railItem(0, '首页', '🏠')
+      this.railItem(1, '练习', '🎓')
+      this.railItem(2, '导入', '📥')
+      this.railItem(3, '我的', '⚙️')
+    }
+    .width(88)
+    .height('100%')
+    .backgroundColor(MisakaColors.CARD)
+    .padding({ top: 16, bottom: 16 })
+    .justifyContent(FlexAlign.Start)
+  }
+
+  @Builder
+  railItem(index: number, label: string, icon: string) {
+    Column({ space: 4 }) {
+      Text(icon)
+        .fontSize(20)
+      Text(label)
+        .fontSize(12)
+        .fontWeight(this.currentTab === index ? FontWeight.Medium : FontWeight.Normal)
+    }
+    .width('100%')
+    .padding({ top: 10, bottom: 10 })
+    .borderRadius(14)
+    .backgroundColor(this.currentTab === index ? MisakaColors.PRIMARY_SOFT : Color.Transparent)
+    .onClick((): void => {
+      this.currentTab = index;
+      this.bump();
+    })
   }
 
   @Builder

@@ -18,6 +18,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { QuizRepository } from '../state/QuizRepository';
 import { SettingsStore } from '../state/SettingsStore';
+import { applyAppColorMode } from '../state/AppSettings';
 
 const DOMAIN = 0x0000;
 
@@ -29,10 +30,6 @@ export default class EntryAbility extends UIAbility {
       hilog.error(DOMAIN, 'testTag', 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(err));
     }
     QuizRepository.getInstance().init(this.context);
-    // preferences 是异步打开的：就绪后回灌设置（此前 AppSettings.load 读到默认值）
-    SettingsStore.init(this.context).then((): void => {
-      QuizRepository.getInstance().loadSettings();
-    });
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
   }
 
@@ -43,13 +40,23 @@ export default class EntryAbility extends UIAbility {
   onWindowStageCreate(windowStage: window.WindowStage): void {
     // Main window is created, set main page for this ability
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
-
-    windowStage.loadContent('pages/Index', (err) => {
-      if (err.code) {
-        hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
-        return;
-      }
-      hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
+    // preferences 是异步打开的：先就绪并回灌设置，再加载首页——
+    // 保证首帧即为已存色模式（不闪浅色），开屏浮层决策也读到真实设置
+    const loadMainPage = (): void => {
+      windowStage.loadContent('pages/Index', (err) => {
+        if (err.code) {
+          hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
+          return;
+        }
+        hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
+      });
+    };
+    SettingsStore.init(this.context).then((): void => {
+      QuizRepository.getInstance().loadSettings();
+      applyAppColorMode(this.context, QuizRepository.getInstance().settings.darkThemeEnabled);
+      loadMainPage();
+    }).catch((): void => {
+      loadMainPage();
     });
   }
 

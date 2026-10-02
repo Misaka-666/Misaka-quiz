@@ -1,5 +1,6 @@
 import { SettingsStore } from './SettingsStore';
 import { QuestionType } from '../domain/Models';
+import { common, ConfigurationConstant } from '@kit.AbilityKit';
 
 /**
  * 应用设置 — 1:1 对应 Android QuizRepository 的偏好字段（键名/默认值一致）。
@@ -41,6 +42,24 @@ export const KEY_WRONG_BOOK_SMART_REVIEW_ENABLED = 'wrong_book_smart_review_enab
 export const KEY_WRONG_BOOK_SCOPE_MODE = 'wrong_book_scope_mode';
 export const KEY_WRONG_BOOK_SCOPE_GROUP_NAME = 'wrong_book_scope_group_name';
 export const KEY_WRONG_BOOK_SCOPE_BANK_ID = 'wrong_book_scope_bank_id';
+export const KEY_DARK_THEME_ENABLED = 'dark_theme_enabled';
+export const KEY_TABLET_SIDE_NAVIGATION_ENABLED = 'tablet_side_navigation_enabled';
+export const KEY_MISAKA_MODE_ENABLED = 'misaka_mode_enabled';
+export const KEY_STARTUP_SPLASH_ENABLED = 'startup_splash_enabled';
+
+/**
+ * 应用深浅色切换入口（对齐 Android MisakaQuizTheme(darkTheme=...) + MisakaColors.isDarkMode）。
+ * 颜色全部走 base/dark 同名 color.json 资源，setColorMode 后整树重绘自动换色。
+ */
+export function applyAppColorMode(context: common.UIAbilityContext, dark: boolean): void {
+  try {
+    context.getApplicationContext().setColorMode(dark
+      ? ConfigurationConstant.ColorMode.COLOR_MODE_DARK
+      : ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT);
+  } catch (_err) {
+    // ponytail: 失败仅保持当前模式（与 Android 一致，主题失败不崩溃）
+  }
+}
 
 export function normalizeWrongBookScopeMode(mode: string): string {
   if (mode === 'current_bank' || mode === 'group' || mode === 'bank') {
@@ -145,6 +164,12 @@ export class AppSettings {
   wrongBookScopeMode = 'all_banks';
   wrongBookScopeGroupName = '';
   wrongBookScopeBankId = '';
+  // M7 外观偏好（默认值对齐 Android：dark/misaka 默认关、splash 默认开；
+  // 侧边导航默认开是鸿蒙端主动偏差——本端以阔折叠展开态为主力环境）
+  darkThemeEnabled = false;
+  tabletSideNavigationEnabled = true;
+  misakaModeEnabled = false;
+  startupSplashEnabled = true;
 
   static load(): AppSettings {
     const s = new AppSettings();
@@ -190,6 +215,10 @@ export class AppSettings {
       SettingsStore.getString(KEY_WRONG_BOOK_SCOPE_MODE, 'all_banks'));
     s.wrongBookScopeGroupName = SettingsStore.getString(KEY_WRONG_BOOK_SCOPE_GROUP_NAME, '');
     s.wrongBookScopeBankId = SettingsStore.getString(KEY_WRONG_BOOK_SCOPE_BANK_ID, '');
+    s.darkThemeEnabled = SettingsStore.getBool(KEY_DARK_THEME_ENABLED, false);
+    s.tabletSideNavigationEnabled = SettingsStore.getBool(KEY_TABLET_SIDE_NAVIGATION_ENABLED, true);
+    s.misakaModeEnabled = SettingsStore.getBool(KEY_MISAKA_MODE_ENABLED, false);
+    s.startupSplashEnabled = SettingsStore.getBool(KEY_STARTUP_SPLASH_ENABLED, true);
     return s;
   }
 

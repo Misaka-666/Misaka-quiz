@@ -253,7 +253,7 @@ struct PracticePage {
     return this.session.isDraftAnswered(index) ? 'draft' : '';
   }
 
-  private sheetGridColor(index: number): string {
+  private sheetGridColor(index: number): ResourceColor {
     const state = this.sheetStateAt(index);
     if (state === 'correct') {
       return MisakaColors.GREEN;
@@ -270,7 +270,7 @@ struct PracticePage {
     return MisakaColors.TEXT;
   }
 
-  private sheetGridBg(index: number): string {
+  private sheetGridBg(index: number): ResourceColor {
     const state = this.sheetStateAt(index);
     if (state === 'correct') {
       return MisakaColors.GREEN_SOFT;
@@ -616,7 +616,7 @@ struct PracticePage {
           .height(220)
           .objectFit(ImageFit.Contain)
           .borderRadius(10)
-          .backgroundColor('#F0F1F6')
+          .backgroundColor(MisakaColors.MUTED)
       }, (image: QuestionImage): string => image.id)
     }
     .width('100%')
@@ -656,7 +656,7 @@ struct PracticePage {
             .fontSize(15)
             .fontColor(MisakaColors.TEXT)
             .padding(12)
-            .backgroundColor('#F0F1F6')
+            .backgroundColor(MisakaColors.MUTED)
             .borderRadius(10)
             .width('100%')
         } else {

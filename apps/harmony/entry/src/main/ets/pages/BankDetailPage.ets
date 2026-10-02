@@ -149,7 +149,7 @@ struct BankDetailPage {
       } })
     }
     .padding(10)
-    .backgroundColor('#F0F1F6')
+    .backgroundColor(MisakaColors.MUTED)
     .borderRadius(10)
     .width('100%')
   }
@@ -190,7 +190,7 @@ struct BankDetailPage {
           .height(240)
           .objectFit(ImageFit.Contain)
           .borderRadius(10)
-          .backgroundColor('#F0F1F6')
+          .backgroundColor(MisakaColors.MUTED)
       }, (image: QuestionImage): string => image.id)
       ForEach(question.options, (option: Option) => {
         Row({ space: 8 }) {

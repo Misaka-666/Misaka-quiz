@@ -12,6 +12,7 @@ import { attachImages, ExtractedImportImage } from '../importer/assets/QuestionI
 import { ImportResult, ImportWarning } from '../importer/model/ImportModels';
 import { Question, QuestionType, DEFAULT_BANK_GROUP_NAME } from '../domain/Models';
 import { QuizRepository } from '../state/QuizRepository';
+import { MisakaColors } from './common/QuizWidgets';
 
 const TYPE_LABELS: Record<string, string> = {
   'SINGLE': '单选', 'MULTIPLE': '多选', 'JUDGE': '判断', 'BLANK': '填空', 'SHORT': '简答'
@@ -50,18 +51,18 @@ export struct ImportPage {
 
   private typeBadgeColor(type: string): ResourceColor {
     if (type === QuestionType.SINGLE) {
-      return '#4C7DFF';
+      return MisakaColors.PRIMARY;
     }
     if (type === QuestionType.MULTIPLE) {
-      return '#9A5CE0';
+      return MisakaColors.ACCENT_PURPLE;
     }
     if (type === QuestionType.JUDGE) {
-      return '#12A67A';
+      return MisakaColors.GREEN;
     }
     if (type === QuestionType.BLANK) {
-      return '#D07A2A';
+      return MisakaColors.WARN;
     }
-    return '#8A8A8A';
+    return MisakaColors.TEXT_TERTIARY;
   }
 
   private async importFromBytes(bytes: ArrayBuffer, fileName: string, second?: SecondFilePayload): Promise<void> {
@@ -210,13 +211,13 @@ export struct ImportPage {
     Row({ space: 6 }) {
       Text(warning.level === 'ERROR' ? '错误' : '警告')
         .fontSize(10)
-        .fontColor(Color.White)
-        .backgroundColor(warning.level === 'ERROR' ? '#D0483A' : '#D0902A')
+        .fontColor(MisakaColors.ON_BRAND)
+        .backgroundColor(warning.level === 'ERROR' ? MisakaColors.RED : MisakaColors.WARN)
         .borderRadius(4)
         .padding({ left: 5, right: 5, top: 1, bottom: 1 })
       Text(`${warning.questionNumber ?? ''} ${warning.message}`)
         .fontSize(11)
-        .fontColor('#8A8A8A')
+        .fontColor(MisakaColors.TEXT_TERTIARY)
         .maxLines(2)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
         .layoutWeight(1)
@@ -231,28 +232,28 @@ export struct ImportPage {
       Row({ space: 8 }) {
         Text(this.typeLabel(q.type))
           .fontSize(11)
-          .fontColor(Color.White)
+          .fontColor(MisakaColors.ON_BRAND)
           .backgroundColor(this.typeBadgeColor(q.type))
           .borderRadius(4)
           .padding({ left: 6, right: 6, top: 2, bottom: 2 })
         Text(`第 ${q.number.length > 0 ? q.number : String(index + 1)} 题`)
           .fontSize(11)
-          .fontColor('#666666')
+          .fontColor(MisakaColors.TEXT_SUB)
         if (q.images.length > 0) {
           Text(`图×${q.images.length}`)
             .fontSize(11)
-            .fontColor('#D07A2A')
+            .fontColor(MisakaColors.WARN)
         }
         Blank()
         Text('编辑')
           .fontSize(12)
-          .fontColor('#4C7DFF')
+          .fontColor(MisakaColors.PRIMARY)
           .onClick(() => {
             this.openEditor(index);
           })
         Text('删除')
           .fontSize(12)
-          .fontColor('#D0483A')
+          .fontColor(MisakaColors.RED)
           .onClick(() => {
             this.removeQuestion(index);
           })
@@ -266,18 +267,18 @@ export struct ImportPage {
       if (q.answer.length > 0) {
         Text(`答案：${q.answer.join('、')}`)
           .fontSize(12)
-          .fontColor('#12A67A')
+          .fontColor(MisakaColors.GREEN)
           .width('100%')
       } else {
         Text('未识别到答案')
           .fontSize(12)
-          .fontColor('#D0483A')
+          .fontColor(MisakaColors.RED)
           .width('100%')
       }
     }
     .padding(10)
     .borderRadius(10)
-    .backgroundColor('#F5F6F8')
+    .backgroundColor(MisakaColors.MUTED)
     .width('100%')
     .alignItems(HorizontalAlign.Start)
   }
@@ -290,14 +291,14 @@ export struct ImportPage {
         .fontWeight(FontWeight.Bold)
       Text('题型')
         .fontSize(12)
-        .fontColor('#666666')
+        .fontColor(MisakaColors.TEXT_SUB)
         .alignSelf(ItemAlign.Start)
       Row({ space: 8 }) {
         ForEach(this.typeOrder, (type: string, typeIndex?: number) => {
           Text(this.typeLabel(type))
             .fontSize(13)
-            .fontColor(this.editTypeIndex === typeIndex ? Color.White : '#333333')
-            .backgroundColor(this.editTypeIndex === typeIndex ? '#4C7DFF' : '#E8EAF0')
+            .fontColor(this.editTypeIndex === typeIndex ? MisakaColors.ON_BRAND : MisakaColors.TEXT)
+            .backgroundColor(this.editTypeIndex === typeIndex ? MisakaColors.PRIMARY : MisakaColors.MUTED)
             .borderRadius(14)
             .padding({ left: 12, right: 12, top: 5, bottom: 5 })
             .onClick(() => {
@@ -307,7 +308,7 @@ export struct ImportPage {
       }
       Text('题干')
         .fontSize(12)
-        .fontColor('#666666')
+        .fontColor(MisakaColors.TEXT_SUB)
         .alignSelf(ItemAlign.Start)
       TextArea({ text: this.editStem, placeholder: '题干文本' })
         .height(88)
@@ -317,7 +318,7 @@ export struct ImportPage {
         })
       Text('答案（多个用顿号或逗号分隔）')
         .fontSize(12)
-        .fontColor('#666666')
+        .fontColor(MisakaColors.TEXT_SUB)
         .alignSelf(ItemAlign.Start)
       TextInput({ text: this.editAnswer, placeholder: '如 A 或 A、B、C' })
         .fontSize(13)
@@ -327,8 +328,8 @@ export struct ImportPage {
       Row({ space: 12 }) {
         Button('取消')
           .layoutWeight(1)
-          .backgroundColor('#E8EAF0')
-          .fontColor('#333333')
+          .backgroundColor(MisakaColors.MUTED)
+          .fontColor(MisakaColors.TEXT)
           .onClick(() => {
             this.editingIndex = -1;
           })
@@ -342,7 +343,7 @@ export struct ImportPage {
     }
     .padding(16)
     .borderRadius(16)
-    .backgroundColor(Color.White)
+    .backgroundColor(MisakaColors.CARD)
     .width('86%')
   }
 
@@ -366,8 +367,8 @@ export struct ImportPage {
             })
           Button(this.showPaste ? '收起粘贴' : '粘贴文本')
             .layoutWeight(1)
-            .backgroundColor('#E8EAF0')
-            .fontColor('#333333')
+            .backgroundColor(MisakaColors.MUTED)
+            .fontColor(MisakaColors.TEXT)
             .enabled(!this.busy)
             .onClick(() => {
               this.showPaste = !this.showPaste;
@@ -377,8 +378,8 @@ export struct ImportPage {
         Row({ space: 8 }) {
           Button('内置示例 docx')
             .layoutWeight(1)
-            .backgroundColor('#E8EAF0')
-            .fontColor('#333333')
+            .backgroundColor(MisakaColors.MUTED)
+            .fontColor(MisakaColors.TEXT)
             .fontSize(12)
             .enabled(!this.busy)
             .onClick(() => {
@@ -386,8 +387,8 @@ export struct ImportPage {
             })
           Button('测试 docx')
             .layoutWeight(1)
-            .backgroundColor('#E8EAF0')
-            .fontColor('#333333')
+            .backgroundColor(MisakaColors.MUTED)
+            .fontColor(MisakaColors.TEXT)
             .fontSize(12)
             .enabled(!this.busy)
             .onClick(() => {
@@ -395,8 +396,8 @@ export struct ImportPage {
             })
           Button('测试 xlsx')
             .layoutWeight(1)
-            .backgroundColor('#E8EAF0')
-            .fontColor('#333333')
+            .backgroundColor(MisakaColors.MUTED)
+            .fontColor(MisakaColors.TEXT)
             .fontSize(12)
             .enabled(!this.busy)
             .onClick(() => {
@@ -421,7 +422,7 @@ export struct ImportPage {
         }
         Text(this.statusText)
           .fontSize(12)
-          .fontColor('#666666')
+          .fontColor(MisakaColors.TEXT_SUB)
           .width('100%')
           .maxLines(3)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -480,6 +481,6 @@ export struct ImportPage {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#F0F1F4')
+    .backgroundColor(MisakaColors.MUTED)
   }
 }

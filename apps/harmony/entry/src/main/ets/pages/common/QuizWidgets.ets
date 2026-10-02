@@ -3,26 +3,37 @@
  * 故所有含动态文案/配色的组件一律用组件形式）。
  */
 
-// 主题 Token（M7 暗色模式时扩展为动态）
+// 主题 Token — M7 起为 base/dark 双份 color.json 同名资源，setColorMode 切换后整树重绘自动生效；
+// 暗色取值对齐 Android Tokens.kt（MisakaColors dark 分支），切换入口见 AppSettings.applyAppColorMode
 export class MisakaColors {
-  static readonly PRIMARY: string = '#4F6BFF';
-  static readonly PRIMARY_SOFT: string = '#E8EDFF';
-  static readonly BG: string = '#F4F5FA';
-  static readonly CARD: string = '#FFFFFF';
-  static readonly TEXT: string = '#1B1D26';
-  static readonly TEXT_SUB: string = '#7A7F8C';
-  static readonly GREEN: string = '#18A058';
-  static readonly GREEN_SOFT: string = '#E3F5EC';
-  static readonly RED: string = '#D93838';
-  static readonly RED_SOFT: string = '#FBE7E7';
-  static readonly BORDER: string = '#E4E6EF';
-  static readonly AMBER_SOFT: string = '#FFF4E0';
-  static readonly AMBER: string = '#B27B18';
+  static get PRIMARY(): ResourceColor { return $r('app.color.misaka_primary'); }
+  static get PRIMARY_SOFT(): ResourceColor { return $r('app.color.misaka_primary_soft'); }
+  static get ON_BRAND(): ResourceColor { return $r('app.color.misaka_on_brand'); }
+  static get ON_BRAND_SUB(): ResourceColor { return $r('app.color.misaka_on_brand_sub'); }
+  static get BG(): ResourceColor { return $r('app.color.misaka_bg'); }
+  static get CARD(): ResourceColor { return $r('app.color.misaka_card'); }
+  static get TEXT(): ResourceColor { return $r('app.color.misaka_text'); }
+  static get TEXT_SUB(): ResourceColor { return $r('app.color.misaka_text_sub'); }
+  static get TEXT_TERTIARY(): ResourceColor { return $r('app.color.misaka_text_tertiary'); }
+  static get TEXT_DISABLED(): ResourceColor { return $r('app.color.misaka_text_disabled'); }
+  static get MUTED(): ResourceColor { return $r('app.color.misaka_muted'); }
+  static get BORDER(): ResourceColor { return $r('app.color.misaka_border'); }
+  static get GREEN(): ResourceColor { return $r('app.color.misaka_green'); }
+  static get GREEN_SOFT(): ResourceColor { return $r('app.color.misaka_green_soft'); }
+  static get RED(): ResourceColor { return $r('app.color.misaka_red'); }
+  static get RED_SOFT(): ResourceColor { return $r('app.color.misaka_red_soft'); }
+  static get AMBER(): ResourceColor { return $r('app.color.misaka_amber'); }
+  static get AMBER_SOFT(): ResourceColor { return $r('app.color.misaka_amber_soft'); }
+  static get WARN(): ResourceColor { return $r('app.color.misaka_warn'); }
+  static get ACCENT_PURPLE(): ResourceColor { return $r('app.color.misaka_accent_purple'); }
 }
 
 export const TYPE_LABELS: Record<string, string> = {
   'SINGLE': '单选题', 'MULTIPLE': '多选题', 'JUDGE': '判断题', 'BLANK': '填空题', 'SHORT': '简答题'
 };
+
+/** 应用版本标签（与 AppScope/app.json5 versionName 同步 bump） */
+export const APP_VERSION_LABEL = 'v0.8.0-harmony';
 
 export const TYPE_COMPACT_LABELS: Record<string, string> = {
   'SINGLE': '单选', 'MULTIPLE': '多选', 'JUDGE': '判断', 'BLANK': '填空', 'SHORT': '简答'
@@ -79,8 +90,8 @@ export struct PillButton {
     Text(this.label)
       .fontSize(15)
       .fontWeight(this.primary ? FontWeight.Medium : FontWeight.Normal)
-      .fontColor(!this.isEnabled ? '#B9BCC8' : (this.primary ? Color.White : MisakaColors.TEXT))
-      .backgroundColor(!this.isEnabled ? '#F0F1F6' : (this.primary ? MisakaColors.PRIMARY : MisakaColors.CARD))
+      .fontColor(!this.isEnabled ? MisakaColors.TEXT_DISABLED : (this.primary ? MisakaColors.ON_BRAND : MisakaColors.TEXT))
+      .backgroundColor(!this.isEnabled ? MisakaColors.MUTED : (this.primary ? MisakaColors.PRIMARY : MisakaColors.CARD))
       .borderRadius(22)
       .border({
         width: 1,
@@ -161,7 +172,7 @@ export struct StatusChip {
     if (this.tone === 'red') {
       return MisakaColors.RED_SOFT;
     }
-    return '#F0F1F6';
+    return MisakaColors.MUTED;
   }
 }
 
@@ -175,7 +186,7 @@ export struct ChoiceCard {
   @Prop lineHeight: number;
   onTap: () => void = (): void => {};
 
-  private bgTone(): string {
+  private bgTone(): ResourceColor {
     if (this.state === 'correct') {
       return MisakaColors.GREEN_SOFT;
     }
@@ -191,7 +202,7 @@ export struct ChoiceCard {
     return MisakaColors.CARD;
   }
 
-  private borderTone(): string {
+  private borderTone(): ResourceColor {
     if (this.state === 'correct') {
       return MisakaColors.GREEN;
     }
@@ -207,7 +218,7 @@ export struct ChoiceCard {
     return MisakaColors.BORDER;
   }
 
-  private labelBgTone(): string {
+  private labelBgTone(): ResourceColor {
     if (this.state === 'correct') {
       return MisakaColors.GREEN;
     }
@@ -220,12 +231,12 @@ export struct ChoiceCard {
     if (this.selected) {
       return MisakaColors.PRIMARY;
     }
-    return '#F0F1F6';
+    return MisakaColors.MUTED;
   }
 
   private labelFgTone(): ResourceColor {
     if (this.state === 'correct' || this.state === 'wrong' || this.state === 'missed' || this.selected) {
-      return Color.White;
+      return MisakaColors.ON_BRAND;
     }
     return MisakaColors.TEXT;
   }
@@ -281,7 +292,7 @@ export struct SettingToggleRow {
       Text(this.value ? '已开启' : '已关闭')
         .fontSize(13)
         .fontColor(this.value ? MisakaColors.PRIMARY : MisakaColors.TEXT_SUB)
-        .backgroundColor(this.value ? MisakaColors.PRIMARY_SOFT : '#F0F1F6')
+        .backgroundColor(this.value ? MisakaColors.PRIMARY_SOFT : MisakaColors.MUTED)
         .borderRadius(16)
         .padding({ left: 14, right: 14, top: 7, bottom: 7 })
         .onClick((): void => {
@@ -334,7 +345,7 @@ export struct InfoNotice {
     Text(this.text)
       .fontSize(13)
       .fontColor(this.warning ? MisakaColors.AMBER : MisakaColors.TEXT_SUB)
-      .backgroundColor(this.warning ? MisakaColors.AMBER_SOFT : '#F0F1F6')
+      .backgroundColor(this.warning ? MisakaColors.AMBER_SOFT : MisakaColors.MUTED)
       .borderRadius(10)
       .padding(12)
       .width('100%')

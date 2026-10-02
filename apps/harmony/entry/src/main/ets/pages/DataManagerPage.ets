@@ -276,7 +276,7 @@ struct DataManagerPage {
       Text(title)
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
-        .fontColor(warning ? '#D05A2A' : MisakaColors.TEXT)
+        .fontColor(warning ? MisakaColors.WARN : MisakaColors.TEXT)
       Text(desc)
         .fontSize(12)
         .fontColor(MisakaColors.TEXT_SUB)
@@ -284,7 +284,7 @@ struct DataManagerPage {
     .layoutWeight(1)
     .padding({ top: 16, bottom: 16 })
     .borderRadius(10)
-    .backgroundColor(warning ? '#FBE9E1' : '#F0F1F6')
+    .backgroundColor(warning ? MisakaColors.AMBER_SOFT : MisakaColors.MUTED)
     .opacity(enabled ? 1 : 0.45)
     .onClick((): void => {
       if (enabled) {

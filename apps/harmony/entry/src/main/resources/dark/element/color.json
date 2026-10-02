@@ -2,7 +2,87 @@
   "color": [
     {
       "name": "start_window_background",
-      "value": "#000000"
+      "value": "#0E1627"
+    },
+    {
+      "name": "misaka_primary",
+      "value": "#89A7FF"
+    },
+    {
+      "name": "misaka_primary_soft",
+      "value": "#243A63"
+    },
+    {
+      "name": "misaka_on_brand",
+      "value": "#0F172A"
+    },
+    {
+      "name": "misaka_on_brand_sub",
+      "value": "#2E3E63"
+    },
+    {
+      "name": "misaka_bg",
+      "value": "#0E1627"
+    },
+    {
+      "name": "misaka_card",
+      "value": "#17233D"
+    },
+    {
+      "name": "misaka_text",
+      "value": "#F8FAFC"
+    },
+    {
+      "name": "misaka_text_sub",
+      "value": "#B8C2D6"
+    },
+    {
+      "name": "misaka_text_tertiary",
+      "value": "#8794AA"
+    },
+    {
+      "name": "misaka_text_disabled",
+      "value": "#5A6A8C"
+    },
+    {
+      "name": "misaka_muted",
+      "value": "#25324F"
+    },
+    {
+      "name": "misaka_border",
+      "value": "#334462"
+    },
+    {
+      "name": "misaka_green",
+      "value": "#5FE3A2"
+    },
+    {
+      "name": "misaka_green_soft",
+      "value": "#123A2A"
+    },
+    {
+      "name": "misaka_red",
+      "value": "#FF8A80"
+    },
+    {
+      "name": "misaka_red_soft",
+      "value": "#3B1E24"
+    },
+    {
+      "name": "misaka_amber",
+      "value": "#F9C46B"
+    },
+    {
+      "name": "misaka_amber_soft",
+      "value": "#3B2B12"
+    },
+    {
+      "name": "misaka_warn",
+      "value": "#F9B955"
+    },
+    {
+      "name": "misaka_accent_purple",
+      "value": "#C3A6FF"
     }
   ]
 }

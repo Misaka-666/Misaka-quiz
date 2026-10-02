@@ -168,7 +168,7 @@ struct ExamPage {
                   .height(220)
                   .objectFit(ImageFit.Contain)
                   .borderRadius(10)
-                  .backgroundColor('#F0F1F6')
+                  .backgroundColor(MisakaColors.MUTED)
               }, (image: QuestionImage): string => image.id)
               this.answerArea(question);
             }
@@ -248,7 +248,7 @@ struct ExamPage {
         GridItem() {
           Text(`${index + 1}`)
             .fontSize(15)
-            .fontColor(this.exam.isAnswered(this.exam.questions[index]) ? Color.White : MisakaColors.TEXT)
+            .fontColor(this.exam.isAnswered(this.exam.questions[index]) ? MisakaColors.ON_BRAND : MisakaColors.TEXT)
             .backgroundColor(this.exam.isAnswered(this.exam.questions[index]) ? MisakaColors.PRIMARY : MisakaColors.CARD)
             .borderRadius(10)
             .width(40)
