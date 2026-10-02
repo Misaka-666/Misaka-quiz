@@ -29,7 +29,7 @@ import {
   KEY_PRACTICE_PREFERRED_BATCH_CUSTOM_SIZE, KEY_PRACTICE_PREFERRED_TYPE_NAMES
 } from '../state/AppSettings';
 
-const VERSION_LABEL = 'v0.5.0-harmony';
+const VERSION_LABEL = 'v0.7.0-harmony';
 
 @Entry
 @Component
@@ -627,7 +627,36 @@ struct Index {
         .padding(8)
         .width('100%')
 
-        InfoNotice({ text: `Misaka Quiz ${VERSION_LABEL} · 鸿蒙原生\n解析器回归 39/39 · M4 练习+考试`, warning: false })
+        Text('数据')
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+        Column() {
+          Row() {
+            Column({ space: 2 }) {
+              Text('数据管理')
+                .fontSize(15)
+              Text('备份导出/导入、清除本地数据')
+                .fontSize(12)
+                .fontColor(MisakaColors.TEXT_SUB)
+            }
+            .alignItems(HorizontalAlign.Start)
+            .layoutWeight(1)
+            Text('›')
+              .fontSize(18)
+              .fontColor(MisakaColors.TEXT_SUB)
+          }
+          .width('100%')
+          .padding(12)
+          .onClick((): void => {
+            router.pushUrl({ url: 'pages/DataManagerPage' });
+          })
+        }
+        .backgroundColor(MisakaColors.CARD)
+        .borderRadius(12)
+        .padding(4)
+        .width('100%')
+
+        InfoNotice({ text: `Misaka Quiz ${VERSION_LABEL} · 鸿蒙原生\n解析器回归 39/39 · M5 学习管理 + M6 备份互通`, warning: false })
       }
       .padding(16)
       .width('100%')

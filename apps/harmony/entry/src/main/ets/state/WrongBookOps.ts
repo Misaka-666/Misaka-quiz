@@ -29,7 +29,7 @@ function nextDayStart(timestamp: number): number {
   return startOfDay(timestamp) + DAY_MILLIS;
 }
 
-function isWrongEntryMastered(reviewRightCount: number, streakCorrectCount: number): boolean {
+export function isWrongEntryMastered(reviewRightCount: number, streakCorrectCount: number): boolean {
   return streakCorrectCount >= 2;
 }
 

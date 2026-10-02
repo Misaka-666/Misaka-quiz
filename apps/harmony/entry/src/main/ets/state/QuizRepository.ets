@@ -1,5 +1,6 @@
 import { common } from '@kit.AbilityKit';
 import { util } from '@kit.ArkTS';
+import { fileIo } from '@kit.CoreFileKit';
 import { FileStore } from './FileStore';
 import { SettingsStore } from './SettingsStore';
 import { AppSettings } from './AppSettings';
@@ -10,6 +11,10 @@ import {
   parseSlashedEntry, favoriteEntryToJson, parseFavoriteEntry, studyRecordToJson,
   parseStudyRecord
 } from '../domain/Models';
+import {
+  BACKUP_KIND_FULL, BACKUP_KIND_SELECTED, importBackupText
+} from './BackupCodec';
+import { BackupBuildRequest, buildBackupZipBytes, openBackupZip } from './BackupFiles';
 import {
   PracticeSessionCore, PracticeHost, PracticeQuestionSource, bankPoolSources,
   PRACTICE_MODE_INSTANT, OBJECTIVE_QUESTION_TYPES, ALL_QUESTION_TYPES
@@ -53,6 +58,15 @@ function toJsonArray(value: Object | undefined): Object[] {
 
 function isJsonObject(value: Object | undefined): boolean {
   return value !== undefined && value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function writeBytesToFile(path: string, data: Uint8Array): void {
+  const file: fileIo.File = fileIo.openSync(path, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
+  try {
+    fileIo.writeSync(file.fd, data.buffer as ArrayBuffer);
+  } finally {
+    fileIo.closeSync(file);
+  }
 }
 
 /**
@@ -482,6 +496,116 @@ export class QuizRepository {
       'practiceSequentialProgress': progress
     };
     FileStore.writeTextAtomic(context.filesDir, STATE_FILE, JSON.stringify(state));
+  }
+
+  // ---------- 备份导入/导出（M6，协议对齐 Android backup.json v3 + web_backup） ----------
+
+  private looksLikeZipBytes(view: Uint8Array): boolean {
+    return view.length >= 4 && view[0] === 0x50 && view[1] === 0x4B && view[2] === 0x03 && view[3] === 0x04;
+  }
+
+  async exportFullBackupZip(): Promise<ArrayBuffer | null> {
+    return this.exportBackupZip(null, true, true, true);
+  }
+
+  async exportBanksBackupZip(bankIds: Set<string>): Promise<ArrayBuffer | null> {
+    return this.exportBackupZip(bankIds, false, false, false);
+  }
+
+  private async exportBackupZip(bankIds: Set<string> | null,
+    includeWrongBook: boolean, includeFavorites: boolean, includeRecords: boolean): Promise<ArrayBuffer | null> {
+    if (this.context === null) {
+      return null;
+    }
+    const req = new BackupBuildRequest();
+    req.kind = bankIds === null ? BACKUP_KIND_FULL : BACKUP_KIND_SELECTED;
+    req.banks = bankIds === null ? this.banks
+      : this.banks.filter((bank: QuizBank): boolean => bankIds.has(bank.id));
+    req.activeBankId = this.activeBankId;
+    req.wrongBook = this.wrongBook;
+    req.favorites = this.favoriteQuestions;
+    req.records = this.studyRecords;
+    req.includeWrongBook = includeWrongBook;
+    req.includeFavorites = includeFavorites;
+    req.includeStudyRecords = includeRecords;
+    return buildBackupZipBytes(this.context, req);
+  }
+
+  /** ZIP（PK 魔数/后缀）或 JSON 文本 → 返回用户可读结果消息 */
+  async importBackupBytes(fileName: string, bytes: ArrayBuffer): Promise<string> {
+    if (bytes.byteLength === 0) {
+      return '导入失败：文件内容为空。';
+    }
+    const view = new Uint8Array(bytes);
+    if (fileName.toLowerCase().endsWith('.zip') || this.looksLikeZipBytes(view)) {
+      if (this.context === null) {
+        return '导入失败：内部状态未初始化。';
+      }
+      const content = await openBackupZip(this.context, bytes);
+      if (content === null) {
+        return '导入失败：ZIP 备份无法读取。';
+      }
+      return this.applyBackupImport(content.jsonText, content.assets);
+    }
+    return this.applyBackupImport(util.TextDecoder.create('utf-8').decodeWithStream(view), new Map<string, Uint8Array>());
+  }
+
+  private applyBackupImport(jsonText: string, zipAssets: Map<string, Uint8Array>): string {
+    const context = this.context;
+    if (context === null) {
+      return '导入失败：内部状态未初始化。';
+    }
+    // 图片资产统一落到独立会话目录，避免与旧引用冲突（对齐 Android question_assets/backup_<ts>）
+    const assetDir = `${context.filesDir}/question_assets/backup_${Date.now()}`;
+    try {
+      fileIo.mkdirSync(assetDir, true);
+    } catch (_err) {
+      return '导入失败：无法创建资产目录。';
+    }
+    const writeAsset = (fileName: string, data: Uint8Array): string | null => {
+      const safeName = (fileName.split('/').pop() ?? fileName).replace(/[^A-Za-z0-9_.-]/g, '_');
+      if (safeName.length === 0 || safeName === '.' || safeName === '..') {
+        return null;
+      }
+      try {
+        writeBytesToFile(`${assetDir}/${safeName}`, data);
+        return `${assetDir}/${safeName}`;
+      } catch (_err) {
+        return null;
+      }
+    };
+    const outcome = importBackupText(jsonText, this.banks, zipAssets, writeAsset,
+      (): string => util.generateRandomUUID(true), Date.now());
+    if (!outcome.ok) {
+      return outcome.message;
+    }
+    this.banks = this.banks.concat(outcome.banks);
+    this.wrongBook = outcome.wrongBook.concat(this.wrongBook);
+    this.favoriteQuestions = outcome.favorites.concat(this.favoriteQuestions);
+    this.studyRecords = outcome.records.concat(this.studyRecords);
+    if (outcome.activeBankId.length > 0) {
+      this.activeBankId = outcome.activeBankId;
+    } else if (this.activeBankId.length === 0 && outcome.banks.length > 0) {
+      this.activeBankId = outcome.banks[0].id;
+    }
+    this.practice.resetState();
+    this.exam.reset();
+    this.persist();
+    return outcome.message;
+  }
+
+  /** 清除本地全部数据（设置项保留，对齐 Android clearAllLocalData） */
+  clearAllLocalData(): void {
+    this.banks = [];
+    this.wrongBook = [];
+    this.slashedQuestions = [];
+    this.favoriteQuestions = [];
+    this.studyRecords = [];
+    this.practiceSequentialProgress = {};
+    this.activeBankId = '';
+    this.practice.resetState();
+    this.exam.reset();
+    this.persist();
   }
 
   // ---------- 题库 CRUD ----------

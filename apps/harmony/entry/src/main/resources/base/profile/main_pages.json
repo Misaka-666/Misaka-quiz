@@ -11,6 +11,7 @@
     "pages/FavoritePage",
     "pages/RecordsPage",
     "pages/RecordDetailPage",
-    "pages/QuestionSearchPage"
+    "pages/QuestionSearchPage",
+    "pages/DataManagerPage"
   ]
 }
