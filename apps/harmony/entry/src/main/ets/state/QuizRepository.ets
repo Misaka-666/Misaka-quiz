@@ -27,7 +27,11 @@ import {
 } from './WrongBookOps';
 import {
   KEY_WRONG_BOOK_SMART_REVIEW_ENABLED, KEY_WRONG_BOOK_SCOPE_MODE,
-  KEY_WRONG_BOOK_SCOPE_GROUP_NAME, KEY_WRONG_BOOK_SCOPE_BANK_ID
+  KEY_WRONG_BOOK_SCOPE_GROUP_NAME, KEY_WRONG_BOOK_SCOPE_BANK_ID,
+  KEY_AI_PROVIDER, KEY_AI_API_BASE_URL, KEY_AI_API_KEY, KEY_AI_MODEL_NAME,
+  KEY_AI_REFACTOR_ENABLED, KEY_AI_REVIEW_ENABLED, KEY_AI_ANALYSIS_ENABLED,
+  KEY_AI_SINGLE_QUESTION_ANALYSIS_ENABLED, KEY_AI_ONLY_ANOMALY, KEY_AI_REQUIRE_CONFIRM,
+  KEY_AI_MAX_QUESTIONS, KEY_AI_TIMEOUT_SECONDS, KEY_AI_REFACTOR_MAX_CHARS
 } from './AppSettings';
 
 export class WrongBookSmartReviewSummary {
@@ -225,6 +229,77 @@ export class QuizRepository {
   setWrongBookSmartReviewEnabled(enabled: boolean): void {
     this.settings.wrongBookSmartReviewEnabled = enabled;
     this.settings.putBool(KEY_WRONG_BOOK_SMART_REVIEW_ENABLED, enabled);
+  }
+
+  // ---------- AI 设置（M8，对齐 Android setAi*/clearAiConfig/isAiConfigured） ----------
+
+  isAiConfigured(): boolean {
+    return this.settings.aiApiBaseUrl.trim().length > 0 && this.settings.aiApiKey.trim().length > 0 &&
+      this.settings.aiModelName.trim().length > 0;
+  }
+
+  setAiInterfaceConfig(provider: string, apiBaseUrl: string, apiKey: string, modelName: string): void {
+    const s = this.settings;
+    s.aiProvider = provider.trim().length > 0 ? provider : 'DeepSeek';
+    s.aiApiBaseUrl = apiBaseUrl.trim();
+    s.aiApiKey = apiKey.trim();
+    s.aiModelName = modelName.trim();
+    s.putString(KEY_AI_PROVIDER, s.aiProvider);
+    s.putString(KEY_AI_API_BASE_URL, s.aiApiBaseUrl);
+    s.putString(KEY_AI_API_KEY, s.aiApiKey);
+    s.putString(KEY_AI_MODEL_NAME, s.aiModelName);
+  }
+
+  setAiFeatureEnabled(feature: 'refactor' | 'review' | 'analysis' | 'single' | 'onlyAnomaly' | 'requireConfirm',
+    enabled: boolean): void {
+    const s = this.settings;
+    if (feature === 'refactor') {
+      s.aiRefactorEnabled = enabled;
+      s.putBool(KEY_AI_REFACTOR_ENABLED, enabled);
+    } else if (feature === 'review') {
+      s.aiReviewEnabled = enabled;
+      s.putBool(KEY_AI_REVIEW_ENABLED, enabled);
+    } else if (feature === 'analysis') {
+      s.aiAnalysisEnabled = enabled;
+      s.putBool(KEY_AI_ANALYSIS_ENABLED, enabled);
+    } else if (feature === 'single') {
+      s.aiSingleQuestionAnalysisEnabled = enabled;
+      s.putBool(KEY_AI_SINGLE_QUESTION_ANALYSIS_ENABLED, enabled);
+    } else if (feature === 'onlyAnomaly') {
+      s.aiOnlyAnomaly = enabled;
+      s.putBool(KEY_AI_ONLY_ANOMALY, enabled);
+    } else {
+      s.aiRequireConfirm = enabled;
+      s.putBool(KEY_AI_REQUIRE_CONFIRM, enabled);
+    }
+  }
+
+  setAiProcessingLimits(maxQuestions: number, timeoutSeconds: number, refactorMaxChars: number): void {
+    const s = this.settings;
+    s.aiMaxQuestions = Math.min(Math.max(maxQuestions, 5), 100);
+    s.aiTimeoutSeconds = Math.min(Math.max(timeoutSeconds, 15), 180);
+    s.aiRefactorMaxChars = Math.min(Math.max(refactorMaxChars, 5000), 80000);
+    s.putNumber(KEY_AI_MAX_QUESTIONS, s.aiMaxQuestions);
+    s.putNumber(KEY_AI_TIMEOUT_SECONDS, s.aiTimeoutSeconds);
+    s.putNumber(KEY_AI_REFACTOR_MAX_CHARS, s.aiRefactorMaxChars);
+  }
+
+  clearAiConfig(): void {
+    const s = this.settings;
+    s.aiApiBaseUrl = '';
+    s.aiApiKey = '';
+    s.aiModelName = '';
+    s.aiRefactorEnabled = false;
+    s.aiReviewEnabled = false;
+    s.aiAnalysisEnabled = false;
+    s.aiSingleQuestionAnalysisEnabled = false;
+    s.putString(KEY_AI_API_BASE_URL, '');
+    s.putString(KEY_AI_API_KEY, '');
+    s.putString(KEY_AI_MODEL_NAME, '');
+    s.putBool(KEY_AI_REFACTOR_ENABLED, false);
+    s.putBool(KEY_AI_REVIEW_ENABLED, false);
+    s.putBool(KEY_AI_ANALYSIS_ENABLED, false);
+    s.putBool(KEY_AI_SINGLE_QUESTION_ANALYSIS_ENABLED, false);
   }
 
   /** 待复习（未掌握 + 未斩题） */

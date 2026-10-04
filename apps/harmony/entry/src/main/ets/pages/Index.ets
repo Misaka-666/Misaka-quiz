@@ -725,6 +725,9 @@ struct Index {
           this.meStrip('外观偏好', '主题、Misaka 模式、开屏图和侧边导航。', (): void => {
             router.pushUrl({ url: 'pages/AppearancePage' });
           })
+          this.meStrip('AI 设置', '接口配置、导入核对、题目页分析和成本限制。', (): void => {
+            router.pushUrl({ url: 'pages/AiSettingsPage' });
+          })
           this.meStrip('数据管理', '导入、导出、备份和清除本地数据。', (): void => {
             router.pushUrl({ url: 'pages/DataManagerPage' });
           })
@@ -754,7 +757,7 @@ struct Index {
         .padding(8)
         .width('100%')
 
-        InfoNotice({ text: `Misaka Quiz ${APP_VERSION_LABEL} · 鸿蒙原生\n解析器回归 39/39 · M7 体验完整度（暗色/侧边导航/开屏）`, warning: false })
+        InfoNotice({ text: `Misaka Quiz ${APP_VERSION_LABEL} · 鸿蒙原生\n解析器回归 39/39 · M8 AI 全家桶（核对/解析/重构/单题分析/问 AI/题库分析）`, warning: false })
       }
       .padding(16)
       .width('100%')
@@ -842,37 +845,43 @@ struct Index {
 
   @Builder
   importTab() {
-    Column({ space: 12 }) {
-      Column({ space: 8 }) {
-        Text('内置题库')
-          .fontSize(15)
-          .fontWeight(FontWeight.Medium)
-        Text('C1 驾照科目一模拟题库（393 题），来自 Web 端默认题库。')
-          .fontSize(12)
-          .fontColor(MisakaColors.TEXT_SUB)
-        PillButton({ label: this.hasC1() ? '再次导入 C1 题库' : '导入内置 C1 题库', primary: !this.hasC1(), isEnabled: true, onTap: (): void => {
-          this.importC1();
-        }, grow: true })
-        if (this.c1Status.length > 0) {
-          Text(this.c1Status)
+    // M8 修复：ImportPage 原先被 layoutWeight(1) 挤在内置题库卡下方的矮区，
+    // 「选择文件/粘贴文本」与 AI 工具条不可见不可滚；改外层 Scroll + 固定面板高度
+    Scroll() {
+      Column({ space: 12 }) {
+        Column({ space: 8 }) {
+          Text('内置题库')
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+          Text('C1 驾照科目一模拟题库（393 题），来自 Web 端默认题库。')
             .fontSize(12)
             .fontColor(MisakaColors.TEXT_SUB)
+          PillButton({ label: this.hasC1() ? '再次导入 C1 题库' : '导入内置 C1 题库', primary: !this.hasC1(), isEnabled: true, onTap: (): void => {
+            this.importC1();
+          }, fixedWidth: 360 })
+          if (this.c1Status.length > 0) {
+            Text(this.c1Status)
+              .fontSize(12)
+              .fontColor(MisakaColors.TEXT_SUB)
+          }
         }
-      }
-      .padding(14)
-      .backgroundColor(MisakaColors.CARD)
-      .borderRadius(14)
-      .width('100%')
+        .padding(14)
+        .backgroundColor(MisakaColors.CARD)
+        .borderRadius(14)
+        .width('100%')
 
-      Column() {
-        ImportPage()
+        Column() {
+          ImportPage()
+        }
+        .width('100%')
+        .height(900)
       }
-      .layoutWeight(1)
+      .padding(16)
       .width('100%')
     }
-    .padding(16)
+    .layoutWeight(1)
+    .scrollBar(BarState.Off)
     .width('100%')
-    .height('100%')
   }
 
   @Builder

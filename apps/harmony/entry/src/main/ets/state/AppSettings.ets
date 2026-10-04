@@ -46,6 +46,19 @@ export const KEY_DARK_THEME_ENABLED = 'dark_theme_enabled';
 export const KEY_TABLET_SIDE_NAVIGATION_ENABLED = 'tablet_side_navigation_enabled';
 export const KEY_MISAKA_MODE_ENABLED = 'misaka_mode_enabled';
 export const KEY_STARTUP_SPLASH_ENABLED = 'startup_splash_enabled';
+export const KEY_AI_PROVIDER = 'ai_provider';
+export const KEY_AI_API_BASE_URL = 'ai_api_base_url';
+export const KEY_AI_API_KEY = 'ai_api_key';
+export const KEY_AI_MODEL_NAME = 'ai_model_name';
+export const KEY_AI_REFACTOR_ENABLED = 'ai_refactor_enabled';
+export const KEY_AI_REVIEW_ENABLED = 'ai_review_enabled';
+export const KEY_AI_ANALYSIS_ENABLED = 'ai_analysis_enabled';
+export const KEY_AI_SINGLE_QUESTION_ANALYSIS_ENABLED = 'ai_single_question_analysis_enabled';
+export const KEY_AI_ONLY_ANOMALY = 'ai_only_anomaly';
+export const KEY_AI_REQUIRE_CONFIRM = 'ai_require_confirm';
+export const KEY_AI_MAX_QUESTIONS = 'ai_max_questions';
+export const KEY_AI_TIMEOUT_SECONDS = 'ai_timeout_seconds';
+export const KEY_AI_REFACTOR_MAX_CHARS = 'ai_refactor_max_chars';
 
 /**
  * 应用深浅色切换入口（对齐 Android MisakaQuizTheme(darkTheme=...) + MisakaColors.isDarkMode）。
@@ -170,6 +183,20 @@ export class AppSettings {
   tabletSideNavigationEnabled = true;
   misakaModeEnabled = false;
   startupSplashEnabled = true;
+  // M8 AI 设置（键名/默认值与 Android 完全一致）
+  aiProvider = 'DeepSeek';
+  aiApiBaseUrl = '';
+  aiApiKey = '';
+  aiModelName = '';
+  aiRefactorEnabled = false;
+  aiReviewEnabled = false;
+  aiAnalysisEnabled = false;
+  aiSingleQuestionAnalysisEnabled = false;
+  aiOnlyAnomaly = true;
+  aiRequireConfirm = true;
+  aiMaxQuestions = 20;
+  aiTimeoutSeconds = 60;
+  aiRefactorMaxChars = 30000;
 
   static load(): AppSettings {
     const s = new AppSettings();
@@ -219,6 +246,19 @@ export class AppSettings {
     s.tabletSideNavigationEnabled = SettingsStore.getBool(KEY_TABLET_SIDE_NAVIGATION_ENABLED, true);
     s.misakaModeEnabled = SettingsStore.getBool(KEY_MISAKA_MODE_ENABLED, false);
     s.startupSplashEnabled = SettingsStore.getBool(KEY_STARTUP_SPLASH_ENABLED, true);
+    s.aiProvider = SettingsStore.getString(KEY_AI_PROVIDER, 'DeepSeek');
+    s.aiApiBaseUrl = SettingsStore.getString(KEY_AI_API_BASE_URL, '');
+    s.aiApiKey = SettingsStore.getString(KEY_AI_API_KEY, '');
+    s.aiModelName = SettingsStore.getString(KEY_AI_MODEL_NAME, '');
+    s.aiRefactorEnabled = SettingsStore.getBool(KEY_AI_REFACTOR_ENABLED, false);
+    s.aiReviewEnabled = SettingsStore.getBool(KEY_AI_REVIEW_ENABLED, false);
+    s.aiAnalysisEnabled = SettingsStore.getBool(KEY_AI_ANALYSIS_ENABLED, false);
+    s.aiSingleQuestionAnalysisEnabled = SettingsStore.getBool(KEY_AI_SINGLE_QUESTION_ANALYSIS_ENABLED, false);
+    s.aiOnlyAnomaly = SettingsStore.getBool(KEY_AI_ONLY_ANOMALY, true);
+    s.aiRequireConfirm = SettingsStore.getBool(KEY_AI_REQUIRE_CONFIRM, true);
+    s.aiMaxQuestions = Math.min(Math.max(SettingsStore.getNumber(KEY_AI_MAX_QUESTIONS, 20), 5), 100);
+    s.aiTimeoutSeconds = Math.min(Math.max(SettingsStore.getNumber(KEY_AI_TIMEOUT_SECONDS, 60), 15), 180);
+    s.aiRefactorMaxChars = Math.min(Math.max(SettingsStore.getNumber(KEY_AI_REFACTOR_MAX_CHARS, 30000), 5000), 80000);
     return s;
   }
 

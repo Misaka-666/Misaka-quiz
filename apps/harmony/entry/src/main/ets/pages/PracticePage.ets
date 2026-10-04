@@ -10,8 +10,11 @@ import { Question, QuestionType, Option, QuestionImage } from '../domain/Models'
 import { hasStructuredAnswers } from '../importer/model/MultiBlankSupport';
 import { PracticeSessionCore, PRACTICE_MODE_BATCH, PRACTICE_MODE_INSTANT } from '../state/PracticeSessionCore';
 import { practiceDisplayOptions, PracticeDisplayOption } from '../state/OptionShuffle';
+import { MisakaAiClient } from '../ai/MisakaAiClient';
+import { AiSingleQuestionAnalysis, AiStreamCallback } from '../ai/AiTypes';
+import { aiDisplayQuestionWithAnswer, aiConfidenceLabel } from '../ai/AiSuggestions';
 import {
-  MisakaColors, TypeBadge, PillButton, ChoiceCard, AnswerResultBlock, InfoNotice
+  MisakaColors, TypeBadge, PillButton, ChoiceCard, AnswerResultBlock, InfoNotice, StatusChip
 } from './common/QuizWidgets';
 
 @Entry
@@ -31,10 +34,124 @@ struct PracticePage {
   @State completedTotal: number = 0;
   @State completedCorrect: number = 0;
   @State isWide: boolean = false;
+  // M8 AI 单题分析 + 问 AI（随题目切换重置）
+  @State aiQuestionAnalysis: AiSingleQuestionAnalysis | null = null;
+  @State aiQuestionError: string = '';
+  @State aiQuestionLoading: boolean = false;
+  @State freeAskExpanded: boolean = false;
+  @State freeAskInput: string = '';
+  @State freeAskResponse: string = '';
+  @State freeAskError: string = '';
+  @State freeAskLoading: boolean = false;
+  @State freeAskStream: string = '';
+  private aiStateKey: string = '';
   private autoNextTimer: number = -1;
 
   private bump(): void {
     this.tick += 1;
+  }
+
+  /** 换题后清空 AI 单题分析/问 AI 状态（对齐 Android remember(currentSessionKey)） */
+  private resetAiIfQuestionChanged(): void {
+    if (this.aiStateKey !== this.sessionKey()) {
+      this.aiStateKey = this.sessionKey();
+      this.aiQuestionAnalysis = null;
+      this.aiQuestionError = '';
+      this.aiQuestionLoading = false;
+      this.freeAskExpanded = false;
+      this.freeAskInput = '';
+      this.freeAskResponse = '';
+      this.freeAskError = '';
+      this.freeAskLoading = false;
+      this.freeAskStream = '';
+    }
+  }
+
+  private canShowAiPanels(): boolean {
+    return this.repo.settings.aiSingleQuestionAnalysisEnabled && (this.isRecite() || this.isSubmittedNow());
+  }
+
+  private runSingleQuestionAiAnalysis(): void {
+    if (!this.repo.isAiConfigured()) {
+      this.aiQuestionError = '请先在 我的 → AI 设置 中填写 API 地址、API Key 和模型名称。';
+      this.aiQuestionAnalysis = null;
+      this.bump();
+      return;
+    }
+    if (this.aiQuestionLoading) {
+      return;
+    }
+    const question = this.session.currentQuestion();
+    if (question === null) {
+      return;
+    }
+    this.aiQuestionLoading = true;
+    this.aiQuestionError = '';
+    this.bump();
+    const userAnswer = this.session.lastResult !== null
+      ? this.session.lastResult.userAnswer.slice() : this.session.selectedAnswer.slice();
+    const view = aiDisplayQuestionWithAnswer(question, this.currentDisplayOptions(), userAnswer);
+    MisakaAiClient.analyzeSingleQuestion(this.repo.settings.aiApiBaseUrl, this.repo.settings.aiApiKey,
+      this.repo.settings.aiModelName, view.question, view.userAnswer, this.repo.settings.aiTimeoutSeconds)
+      .then((analysis: AiSingleQuestionAnalysis): void => {
+        this.aiQuestionAnalysis = analysis;
+        this.aiQuestionError = '';
+        this.aiQuestionLoading = false;
+        this.bump();
+      })
+      .catch((err: Error): void => {
+        this.aiQuestionAnalysis = null;
+        this.aiQuestionError = err.message.length > 0 ? err.message : 'AI 分析失败，请检查接口配置或网络。';
+        this.aiQuestionLoading = false;
+        this.bump();
+      });
+  }
+
+  private runFreeAsk(): void {
+    const text = this.freeAskInput.trim();
+    if (!this.repo.isAiConfigured()) {
+      this.freeAskError = '请先在 我的 → AI 设置 中配置 AI 接口。';
+      this.bump();
+      return;
+    }
+    if (text.length === 0) {
+      this.freeAskError = '请输入问题。';
+      this.bump();
+      return;
+    }
+    if (this.freeAskLoading) {
+      return;
+    }
+    const question = this.session.currentQuestion();
+    if (question === null) {
+      return;
+    }
+    this.freeAskLoading = true;
+    this.freeAskError = '';
+    this.freeAskResponse = '';
+    this.freeAskStream = '';
+    this.freeAskInput = '';
+    this.bump();
+    const view = aiDisplayQuestionWithAnswer(question, this.currentDisplayOptions(), []);
+    MisakaAiClient.freeAskStreaming(this.repo.settings.aiApiBaseUrl, this.repo.settings.aiApiKey,
+      this.repo.settings.aiModelName, view.question, text,
+      new AiStreamCallback((): void => {
+      }, (cumulative: string): void => {
+        this.freeAskStream = cumulative;
+      }, (_full: string): void => {
+      }), this.repo.settings.aiTimeoutSeconds)
+      .then((full: string): void => {
+        this.freeAskStream = full;
+        this.freeAskResponse = full.trim().length > 0 ? full.trim() : 'AI 未返回有效回答。';
+        this.freeAskLoading = false;
+        this.bump();
+      })
+      .catch((err: Error): void => {
+        this.freeAskResponse = '';
+        this.freeAskError = err.message.length > 0 ? err.message : '提问失败，请检查接口配置或网络。';
+        this.freeAskLoading = false;
+        this.bump();
+      });
   }
 
   private sessionKey(): string {
@@ -108,6 +225,7 @@ struct PracticePage {
     }
     this.session.nextQuestion();
     this.syncTextMirrors();
+    this.resetAiIfQuestionChanged();
     this.bump();
   }
 
@@ -118,6 +236,7 @@ struct PracticePage {
     }
     this.session.previousQuestion();
     this.syncTextMirrors();
+    this.resetAiIfQuestionChanged();
     this.bump();
   }
 
@@ -589,11 +708,150 @@ struct PracticePage {
             this.stemBlock(question);
             this.answerArea(question);
             this.resultBlock(question);
+            this.aiPanel(question);
           }
           .width('100%')
         }
       }, (question: Question, index: number): string => this.session.sessionKeyAt(index) !== null
         ? this.session.sessionKeyAt(index) as string : question.id)
+    }
+  }
+
+  /** M8：单题 AI 分析 + 问 AI（对齐 Android SingleQuestionAiAnalysisPanel/FreeAskPanel） */
+  @Builder
+  aiPanel(question: Question) {
+    if (this.canShowAiPanels()) {
+      Column({ space: 10 }) {
+        PillButton({
+          label: this.aiQuestionLoading ? 'AI 分析中'
+            : (this.aiQuestionAnalysis !== null ? '重新分析本题' : 'AI 分析本题'),
+          primary: false, grow: true, isEnabled: !this.aiQuestionLoading,
+          onTap: (): void => {
+            this.runSingleQuestionAiAnalysis();
+          }
+        })
+        if (this.aiQuestionLoading) {
+          InfoNotice({ text: 'AI 正在分析当前题目，请稍候。', warning: false })
+        }
+        if (this.aiQuestionError.length > 0) {
+          InfoNotice({ text: `AI 分析失败：${this.aiQuestionError}`, warning: true })
+        }
+        if (this.aiQuestionAnalysis !== null) {
+          Column({ space: 8 }) {
+            Row({ space: 10 }) {
+              Text('AI 参考分析')
+                .fontSize(15)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(MisakaColors.TEXT)
+              Blank()
+              StatusChip({ label: aiConfidenceLabel(this.aiQuestionAnalysis.confidence), tone: 'primary' })
+            }
+            .width('100%')
+            Text(`参考答案：${this.aiQuestionAnalysis.suggestedAnswer}`)
+              .fontSize(14)
+              .fontColor(MisakaColors.TEXT)
+              .width('100%')
+            if (this.aiQuestionAnalysis.matchesLocalAnswer !== null) {
+              Text(this.aiQuestionAnalysis.matchesLocalAnswer ? '与题库答案：一致' : '与题库答案：可能不一致，建议人工确认')
+                .fontSize(12)
+                .fontColor(this.aiQuestionAnalysis.matchesLocalAnswer ? MisakaColors.PRIMARY : MisakaColors.RED)
+                .width('100%')
+            }
+            if (this.aiQuestionAnalysis.needsReview) {
+              Text('需要人工确认')
+                .fontSize(12)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(MisakaColors.RED)
+                .width('100%')
+            }
+            Text(this.aiQuestionAnalysis.analysis)
+              .fontSize(14)
+              .lineHeight(22)
+              .fontColor(MisakaColors.TEXT_SUB)
+              .width('100%')
+            if (this.aiQuestionAnalysis.warning.length > 0) {
+              Text(`提示：${this.aiQuestionAnalysis.warning}`)
+                .fontSize(12)
+                .fontColor(MisakaColors.RED)
+                .width('100%')
+            }
+            Text('AI 结果仅供参考，不会自动修改题库答案或解析。')
+              .fontSize(11)
+              .fontColor(MisakaColors.TEXT_TERTIARY)
+              .width('100%')
+          }
+          .padding(14)
+          .borderRadius(14)
+          .backgroundColor(MisakaColors.CARD)
+          .width('100%')
+          .alignItems(HorizontalAlign.Start)
+        }
+
+        if (!this.freeAskExpanded) {
+          PillButton({ label: '问 AI', primary: false, grow: true, onTap: (): void => {
+            this.freeAskExpanded = true;
+          } })
+        } else {
+          Row({ space: 8 }) {
+            TextInput({ text: this.freeAskInput, placeholder: '追问当前题目…' })
+              .fontSize(14)
+              .layoutWeight(1)
+              .enabled(!this.freeAskLoading)
+              .onChange((value: string): void => {
+                this.freeAskInput = value;
+              })
+            PillButton({ label: this.freeAskLoading ? '…' : '发送', primary: true,
+              isEnabled: !this.freeAskLoading && this.freeAskInput.trim().length > 0,
+              onTap: (): void => {
+                this.runFreeAsk();
+              } })
+          }
+          .width('100%')
+          Text('收起')
+            .fontSize(12)
+            .fontColor(MisakaColors.TEXT_SUB)
+            .onClick((): void => {
+              this.freeAskExpanded = false;
+            })
+          if (this.freeAskLoading) {
+            if (this.freeAskStream.length > 0) {
+              Text(this.freeAskStream.substring(Math.max(0, this.freeAskStream.length - 400)))
+                .fontSize(12)
+                .fontColor(MisakaColors.TEXT_SUB)
+                .backgroundColor(MisakaColors.PRIMARY_SOFT)
+                .borderRadius(10)
+                .padding(12)
+                .maxLines(8)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+                .width('100%')
+            } else {
+              InfoNotice({ text: 'AI 正在思考中，请稍候。', warning: false })
+            }
+          }
+          if (this.freeAskError.length > 0) {
+            InfoNotice({ text: `提问失败：${this.freeAskError}`, warning: true })
+          }
+          if (this.freeAskResponse.length > 0) {
+            Column({ space: 6 }) {
+              Text('AI 回答')
+                .fontSize(14)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(MisakaColors.TEXT)
+              Text(this.freeAskResponse)
+                .fontSize(14)
+                .lineHeight(22)
+                .fontColor(MisakaColors.TEXT_SUB)
+                .width('100%')
+            }
+            .padding(14)
+            .borderRadius(14)
+            .backgroundColor(MisakaColors.CARD)
+            .width('100%')
+            .alignItems(HorizontalAlign.Start)
+          }
+        }
+      }
+      .width('100%')
     }
   }
 
@@ -734,6 +992,7 @@ struct PracticePage {
             .onClick((): void => {
               this.session.goToQuestion(index);
               this.syncTextMirrors();
+              this.resetAiIfQuestionChanged();
               this.showSheet = false;
               this.bump();
             })
@@ -820,6 +1079,7 @@ struct PracticePage {
               if (next !== undefined) {
                 this.session.goToQuestion(next);
                 this.syncTextMirrors();
+                this.resetAiIfQuestionChanged();
                 this.bump();
               }
             }, grow: true })

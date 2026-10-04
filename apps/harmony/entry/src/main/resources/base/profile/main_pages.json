@@ -14,6 +14,7 @@
     "pages/QuestionSearchPage",
     "pages/DataManagerPage",
     "pages/AppearancePage",
+    "pages/AiSettingsPage",
     "pages/AboutPage"
   ]
 }
