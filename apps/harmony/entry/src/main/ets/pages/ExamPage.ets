@@ -2,7 +2,7 @@
  * M4 考试页 — 倒计时/答题/答题卡/交卷。阔折叠宽屏：左答题卡常驻。
  * 交卷（手动/到点自动）后跳 ExamResultPage。
  */
-import { display, router } from '@kit.ArkUI';
+import { mediaquery, router } from '@kit.ArkUI';
 import { QuizRepository } from '../state/QuizRepository';
 import { Question, QuestionType, QuestionImage } from '../domain/Models';
 import { hasStructuredAnswers } from '../importer/model/MultiBlankSupport';
@@ -18,11 +18,16 @@ struct ExamPage {
   private repo: QuizRepository = QuizRepository.getInstance();
   private exam: ExamSessionCore = QuizRepository.getInstance().exam;
   @State tick: number = 0;
+  // 秒级时钟专用：只驱动 header 倒计时/已答数/进度条表达式。此前每秒 bump 走奇偶换支
+  // 会整树销毁重建（滚动复位/输入中断）。升级路径：会话核心 @ObservedV2/@Trace 化后可删。
+  @State clockTick: number = 0;
   @State textAnswer: string = '';
   @State blankAnswers: string[] = [];
   @State showSheet: boolean = false;
   @State isWide: boolean = false;
   private timerId: number = -1;
+  // 阔折叠双栏断点监听（对齐 PracticePage/Index 已验证模式）：考试中折叠/展开实时切换单双栏
+  private wideListener: mediaquery.MediaQueryListener | null = null;
 
   private bump(): void {
     this.tick += 1;
@@ -119,18 +124,18 @@ struct ExamPage {
       return;
     }
     this.syncTextMirrors();
-    try {
-      const d: display.Display = display.getDefaultDisplaySync();
-      this.isWide = d.width / d.densityPixels >= 540;
-    } catch (_err) {
-      this.isWide = false;
-    }
+    this.wideListener = mediaquery.matchMediaSync('(min-width: 540vp)');
+    this.isWide = this.wideListener.matches;
+    this.wideListener.on('change', (result: mediaquery.MediaQueryResult): void => {
+      this.isWide = result.matches;
+      this.bump();
+    });
     this.timerId = setInterval((): void => {
       if (this.exam.finished) {
         return;
       }
       this.exam.tick();
-      this.bump();
+      this.clockTick += 1;
       if (this.exam.finished) {
         router.replaceUrl({ url: 'pages/ExamResultPage' });
       }
@@ -141,6 +146,10 @@ struct ExamPage {
     if (this.timerId >= 0) {
       clearInterval(this.timerId);
       this.timerId = -1;
+    }
+    if (this.wideListener !== null) {
+      this.wideListener.off('change');
+      this.wideListener = null;
     }
   }
 
@@ -316,18 +325,18 @@ struct ExamPage {
           });
         })
       Column({ space: 2 }) {
-        Text(`已答 ${this.exam.answeredCount()}/${this.exam.questions.length}`)
+        Text(this.clockTick >= 0 ? `已答 ${this.exam.answeredCount()}/${this.exam.questions.length}` : '')
           .fontSize(15)
           .fontWeight(FontWeight.Medium)
-        Progress({ value: this.exam.answeredCount(), total: Math.max(1, this.exam.questions.length), type: ProgressType.Linear })
+        Progress({ value: this.clockTick >= 0 ? this.exam.answeredCount() : 0, total: Math.max(1, this.exam.questions.length), type: ProgressType.Linear })
           .color(MisakaColors.PRIMARY)
           .height(4)
       }
       .layoutWeight(1)
-      Text(formatClockSeconds(this.exam.remainingSeconds))
+      Text(this.clockTick >= 0 ? formatClockSeconds(this.exam.remainingSeconds) : '')
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
-        .fontColor(this.exam.remainingSeconds <= 60 ? MisakaColors.RED : MisakaColors.TEXT)
+        .fontColor(this.clockTick >= 0 && this.exam.remainingSeconds <= 60 ? MisakaColors.RED : MisakaColors.TEXT)
       if (!this.isWide) {
         Text('☰ 答题卡')
           .fontSize(14)

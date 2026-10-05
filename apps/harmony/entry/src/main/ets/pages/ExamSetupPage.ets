@@ -35,13 +35,24 @@ struct ExamSetupPage {
     return [QuestionType.SINGLE, QuestionType.MULTIPLE, QuestionType.JUDGE, QuestionType.BLANK, QuestionType.SHORT];
   }
 
+  // 考试可用数与 Android ExamScreen 同口径：全量 bank.questions（斩题过滤只作用于练习池），
+  // 否则这里显示的可用数与 startExam 组卷源（bank.questions 全量）不一致
   private availableCount(type: string): number {
-    const counts = this.repo.poolTypeCounts();
-    return counts.get(type) !== undefined ? counts.get(type) as number : 0;
+    const bank = this.repo.activeBank();
+    if (bank === null) {
+      return 0;
+    }
+    let count = 0;
+    for (const question of bank.questions) {
+      if (question.type === type) {
+        count += 1;
+      }
+    }
+    return count;
   }
 
   private poolTotal(): number {
-    return this.repo.poolSources().length;
+    return this.repo.activeBank()?.questions.length ?? 0;
   }
 
   private parsedCountAt(index: number): number {
@@ -140,7 +151,11 @@ struct ExamSetupPage {
     this.byType = s.preferredExamGroupMode === 'custom';
     this.shuffleEnabled = s.examOptionShuffleEnabled;
     const types = this.allTypes();
-    const savedCounts = s.preferredExamTypeCounts(this.repo.poolTypeCounts());
+    const available = new Map<string, number>();
+    for (const type of types) {
+      available.set(type, this.availableCount(type));
+    }
+    const savedCounts = s.preferredExamTypeCounts(available);
     const savedScores = s.preferredExamTypeScores();
     this.typeCounts = types.map((type): string => String(savedCounts.get(type) !== undefined ? savedCounts.get(type) as number : 0));
     this.typeScores = types.map((type): string => String(savedScores.get(type) !== undefined ? savedScores.get(type) as number : 1));

@@ -33,7 +33,7 @@ export const TYPE_LABELS: Record<string, string> = {
 };
 
 /** 应用版本标签（与 AppScope/app.json5 versionName 同步 bump） */
-export const APP_VERSION_LABEL = 'v0.9.4-harmony';
+export const APP_VERSION_LABEL = 'v0.9.5-harmony';
 
 export const TYPE_COMPACT_LABELS: Record<string, string> = {
   'SINGLE': '单选', 'MULTIPLE': '多选', 'JUDGE': '判断', 'BLANK': '填空', 'SHORT': '简答'
