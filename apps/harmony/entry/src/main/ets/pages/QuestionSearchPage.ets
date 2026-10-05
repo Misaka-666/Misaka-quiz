@@ -8,7 +8,7 @@ import { QuestionSearchResult, searchQuestions } from '../state/QuestionSearch';
 import { Question, QuizBank, Option, DEFAULT_BANK_GROUP_NAME } from '../domain/Models';
 import { hasStructuredAnswers, expectedAnswerText } from '../importer/model/MultiBlankSupport';
 import {
-  MisakaColors, PillButton, StatusChip, TypeBadge, typeLabel
+  MisakaColors, PillButton, StatusChip, typeLabel
 } from './common/QuizWidgets';
 
 class BankGroupEntry {

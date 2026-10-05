@@ -5,7 +5,6 @@
  * 连通测试走 MisakaAiClient.testConnection（真实 https POST）。
  */
 import { router } from '@kit.ArkUI';
-import { common } from '@kit.AbilityKit';
 import { QuizRepository } from '../state/QuizRepository';
 import { MisakaAiClient } from '../ai/MisakaAiClient';
 import { MisakaColors, PillButton, SmallChip, SettingToggleRow, InfoNotice } from './common/QuizWidgets';
@@ -70,10 +69,6 @@ struct AiSettingsPage {
   @State statusWarn: boolean = false;
   @State limitStatusText: string = '';
   @State testing: boolean = false;
-
-  private context(): common.UIAbilityContext {
-    return this.getUIContext().getHostContext() as common.UIAbilityContext;
-  }
 
   private bump(): void {
     this.tick += 1;

@@ -358,13 +358,6 @@ struct BankListPage {
     .width('100%')
   }
 
-  private renameTextFor(bank: QuizBank): string {
-    if (this.renamingBankId === bank.id && this.renameText.trim().length > 0) {
-      return this.renameText.trim();
-    }
-    return bank.name;
-  }
-
   @Builder
   renameSheet() {
     Column({ space: 14 }) {
@@ -397,7 +390,7 @@ struct BankListPage {
     Row({ space: 10 }) {
       Checkbox()
         .select(this.aiSelected[bank.id] === true)
-        .onChange((value: boolean): void => {
+        .onChange((_value: boolean): void => {
           this.toggleAiBank(bank.id);
         })
       Column({ space: 2 }) {
@@ -494,7 +487,7 @@ struct BankListPage {
               .lineHeight(19)
               .fontColor(MisakaColors.TEXT_SUB)
               .width('100%')
-          }, (tip: string, tipIndex?: number): string => `${panel.bankId}-t-${tipIndex ?? 0}`)
+          }, (_tip: string, tipIndex?: number): string => `${panel.bankId}-t-${tipIndex ?? 0}`)
         }
 
         if (panel.result.reviewStrategy.length > 0) {

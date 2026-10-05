@@ -8,7 +8,7 @@ import { picker } from '@kit.CoreFileKit';
 import { common } from '@kit.AbilityKit';
 import { decodeImportFile, readUriBytes, baseNameOf, ImportedContent } from '../importer/ImportDecoder';
 import { parseStandardText, parseDualText } from '../importer/parser/QuizImportParser';
-import { attachImages, ExtractedImportImage } from '../importer/assets/QuestionImageBinder';
+import { attachImages } from '../importer/assets/QuestionImageBinder';
 import { ImportResult, ImportWarning } from '../importer/model/ImportModels';
 import { Question, QuestionType, DEFAULT_BANK_GROUP_NAME } from '../domain/Models';
 import { QuizRepository } from '../state/QuizRepository';

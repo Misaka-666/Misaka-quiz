@@ -9,7 +9,7 @@ import { hasStructuredAnswers } from '../importer/model/MultiBlankSupport';
 import { ExamSessionCore } from '../state/ExamSessionCore';
 import { practiceDisplayOptions, PracticeDisplayOption } from '../state/OptionShuffle';
 import {
-  MisakaColors, TypeBadge, PillButton, ChoiceCard, InfoNotice, formatClockSeconds
+  MisakaColors, TypeBadge, PillButton, ChoiceCard, formatClockSeconds
 } from './common/QuizWidgets';
 
 @Entry

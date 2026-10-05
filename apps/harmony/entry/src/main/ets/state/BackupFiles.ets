@@ -7,7 +7,7 @@ import { zlib } from '@kit.BasicServicesKit';
 import { fileIo } from '@kit.CoreFileKit';
 import { util } from '@kit.ArkTS';
 import { common } from '@kit.AbilityKit';
-import { Question, QuestionImage, QuizBank, WrongQuestionEntry, FavoriteQuestionEntry, StudyRecord } from '../domain/Models';
+import { QuestionImage, QuizBank, WrongQuestionEntry, FavoriteQuestionEntry, StudyRecord } from '../domain/Models';
 import { buildBackupJson, BACKUP_KIND_FULL } from './BackupCodec';
 
 const MAX_BACKUP_ENTRIES = 1000;

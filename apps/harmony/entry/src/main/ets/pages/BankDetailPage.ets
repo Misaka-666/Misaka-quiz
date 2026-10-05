@@ -3,9 +3,9 @@
  */
 import { router } from '@kit.ArkUI';
 import { QuizRepository } from '../state/QuizRepository';
-import { Question, QuestionType, QuizBank, QuestionImage, Option } from '../domain/Models';
+import { Question, QuizBank, QuestionImage, Option } from '../domain/Models';
 import { hasStructuredAnswers } from '../importer/model/MultiBlankSupport';
-import { MisakaColors, TypeBadge, PillButton, InfoNotice, TYPE_COMPACT_LABELS } from './common/QuizWidgets';
+import { MisakaColors, TypeBadge, PillButton, InfoNotice } from './common/QuizWidgets';
 
 @Entry
 @Component
@@ -132,7 +132,7 @@ struct BankDetailPage {
   }
 
   @Builder
-  slashedRow(question: Question, index: number) {
+  slashedRow(question: Question, _index: number) {
     Row({ space: 10 }) {
       Text(question.question)
         .fontSize(13)

@@ -2,7 +2,6 @@ import { common } from '@kit.AbilityKit';
 import { util } from '@kit.ArkTS';
 import { fileIo } from '@kit.CoreFileKit';
 import { FileStore } from './FileStore';
-import { SettingsStore } from './SettingsStore';
 import { AppSettings } from './AppSettings';
 import {
   QuizBank, Question, QuestionType, Option, WrongQuestionEntry, SlashedQuestionEntry,
@@ -17,7 +16,7 @@ import {
 import { BackupBuildRequest, buildBackupZipBytes, openBackupZip } from './BackupFiles';
 import {
   PracticeSessionCore, PracticeHost, PracticeQuestionSource, bankPoolSources,
-  PRACTICE_MODE_INSTANT, OBJECTIVE_QUESTION_TYPES, ALL_QUESTION_TYPES
+  PRACTICE_MODE_INSTANT, ALL_QUESTION_TYPES
 } from './PracticeSessionCore';
 import { ExamSessionCore } from './ExamSessionCore';
 import {

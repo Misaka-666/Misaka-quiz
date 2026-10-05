@@ -726,7 +726,7 @@ struct PracticePage {
 
   /** M8：单题 AI 分析 + 问 AI（对齐 Android SingleQuestionAiAnalysisPanel/FreeAskPanel） */
   @Builder
-  aiPanel(question: Question) {
+  aiPanel(_question: Question) {
     if (this.canShowAiPanels()) {
       Column({ space: 10 }) {
         Row() {
