@@ -145,6 +145,7 @@ struct DataManagerPage {
       this.busy = true;
       const bytes = readUriBytes(uris[0]);
       if (bytes === null || bytes.byteLength === 0) {
+        this.busy = false;
         this.report('导入失败：没有读取到有效内容。', true);
         return;
       }

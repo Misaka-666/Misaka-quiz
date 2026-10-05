@@ -9,6 +9,7 @@ import { QuizRepository } from '../state/QuizRepository';
 import { Question, QuestionType, Option, QuestionImage } from '../domain/Models';
 import { hasStructuredAnswers } from '../importer/model/MultiBlankSupport';
 import { PracticeSessionCore, PRACTICE_MODE_BATCH, PRACTICE_MODE_INSTANT } from '../state/PracticeSessionCore';
+import { parseQuickEditAnswer } from '../state/AnswerJudge';
 import { practiceDisplayOptions, PracticeDisplayOption } from '../state/OptionShuffle';
 import { MisakaAiClient } from '../ai/MisakaAiClient';
 import { AiSingleQuestionAnalysis, AiStreamCallback } from '../ai/AiTypes';
@@ -427,7 +428,7 @@ struct PracticePage {
       updated.answer = [];
     } else if (question.type === QuestionType.SINGLE || question.type === QuestionType.MULTIPLE ||
       question.type === QuestionType.JUDGE) {
-      updated.answer = rawAnswer.toUpperCase().split(/[\s,，、/|;；]+/).filter((token): boolean => token.length > 0);
+      updated.answer = parseQuickEditAnswer(rawAnswer, question.type, question.options);
     } else {
       updated.answer = [rawAnswer];
     }
@@ -483,24 +484,29 @@ struct PracticePage {
 
   build() {
     Column() {
-      if (this.completed) {
-        this.completedView();
-      } else if (this.tick % 2 === 0) {
-        this.liveBody();
-      } else {
-        this.liveBody();
+      Column() {
+        if (this.completed) {
+          this.completedView();
+        } else if (this.tick % 2 === 0) {
+          this.liveBody();
+        } else {
+          this.liveBody();
+        }
       }
+      .width('100%')
+      .height('100%')
+      // ponytail: 同一节点链两个 bindSheet 时第一个打不开（同 BankListPage 回归），拆到内层节点挂
+      .bindSheet($$this.showSheet, this.sheetBuilder(), {
+        height: SheetSize.MEDIUM,
+        dragBar: true,
+        onDisappear: (): void => {
+          this.showSheet = false;
+        }
+      })
     }
     .width('100%')
     .height('100%')
     .backgroundColor(MisakaColors.BG)
-    .bindSheet($$this.showSheet, this.sheetBuilder(), {
-      height: SheetSize.MEDIUM,
-      dragBar: true,
-      onDisappear: (): void => {
-        this.showSheet = false;
-      }
-    })
     .bindSheet($$this.showQuickEdit, this.quickEditBuilder(), {
       height: SheetSize.LARGE,
       dragBar: true
@@ -679,6 +685,7 @@ struct PracticePage {
           .onClick((): void => {
             this.session.slashCurrent();
             this.syncTextMirrors();
+            this.resetAiIfQuestionChanged();
             this.bump();
           })
       }
@@ -1029,7 +1036,9 @@ struct PracticePage {
             }, grow: true })
         }
         .width('100%')
-      } else if (!this.isRecite()) {
+      } else if (!this.isRecite() &&
+        !(this.session.mode === PRACTICE_MODE_BATCH && this.session.batchSubmitted)) {
+        // 批量复盘时 submitBatch 已给全组（含未答）判分，两个按钮必然双双禁用，整行隐藏
         Row({ space: 10 }) {
           PillButton({
             label: '查看解析', primary: false, isEnabled: !this.isSubmittedNow(),

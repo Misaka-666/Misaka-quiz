@@ -454,6 +454,10 @@ export struct ImportPage {
     if (this.result === null) {
       return;
     }
+    const removed = this.result.questions[index];
+    if (removed !== undefined && this.aiSuggestions.length > 0) {
+      this.aiSuggestions = this.aiSuggestions.filter((s: AiReviewSuggestion): boolean => s.questionId !== removed.id);
+    }
     const kept = this.result.questions.filter((_q: Question, i: number): boolean => i !== index);
     this.result = new ImportResult(kept, this.result.strategyName, this.result.warnings, this.result.diagnostics);
   }
@@ -983,12 +987,12 @@ export struct ImportPage {
       .height('100%')
 
       if (this.editingIndex >= 0) {
-        Column() {
+        Scroll() {
           this.editorPanel()
         }
         .width('100%')
         .height('100%')
-        .justifyContent(FlexAlign.Center)
+        .align(Alignment.Center)
         .backgroundColor('rgba(0,0,0,0.45)')
         .onClick(() => {
           this.editingIndex = -1;

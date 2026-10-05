@@ -237,7 +237,7 @@ struct BankListPage {
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
         Blank()
-        Text(`共 ${this.repo.banks.length} 库`)
+        Text(this.tick >= 0 ? `共 ${this.repo.banks.length} 库` : '')
           .fontSize(13)
           .fontColor(MisakaColors.TEXT_SUB)
         Text('搜索')
@@ -257,26 +257,20 @@ struct BankListPage {
       }
       .width('100%')
       .padding(16)
+      // ponytail: 同一节点链两个 bindSheet 时第一个（改名）打不开（v0.9.0 加 AI sheet 后回归），
+      // 拆到不同节点各挂一个；升级路径 = 官方多 sheet 支持明确后合并回去
+      .bindSheet($$this.showRename, this.renameSheet(), {
+        height: SheetSize.FIT_CONTENT,
+        dragBar: true
+      })
 
       Scroll() {
         Column({ space: 14 }) {
-          if (this.repo.banks.length === 0) {
-            Text('还没有题库，去「导入」页导入或添加内置题库。')
-              .fontSize(14)
-              .fontColor(MisakaColors.TEXT_SUB)
-              .padding(20)
+          if (this.tick % 2 === 0) {
+            this.listBody()
+          } else {
+            this.listBody()
           }
-          ForEach(this.groups(), (group: BankGroup) => {
-            Column({ space: 8 }) {
-              Text(group.name)
-                .fontSize(13)
-                .fontColor(MisakaColors.TEXT_SUB)
-              ForEach(group.banks, (bank: QuizBank) => {
-                this.bankCard(bank)
-              }, (bank: QuizBank): string => bank.id)
-            }
-            .width('100%')
-          }, (group: BankGroup): string => `group-${group.name}`)
         }
         .padding({ left: 16, right: 16, bottom: 24 })
         .width('100%')
@@ -286,14 +280,31 @@ struct BankListPage {
     .width('100%')
     .height('100%')
     .backgroundColor(MisakaColors.BG)
-    .bindSheet($$this.showRename, this.renameSheet(), {
-      height: SheetSize.FIT_CONTENT,
-      dragBar: true
-    })
     .bindSheet($$this.showAiSheet, this.aiSheet(), {
       height: SheetSize.LARGE,
       dragBar: true
     })
+  }
+
+  @Builder
+  listBody() {
+    if (this.repo.banks.length === 0) {
+      Text('还没有题库，去「导入」页导入或添加内置题库。')
+        .fontSize(14)
+        .fontColor(MisakaColors.TEXT_SUB)
+        .padding(20)
+    }
+    ForEach(this.groups(), (group: BankGroup) => {
+      Column({ space: 8 }) {
+        Text(group.name)
+          .fontSize(13)
+          .fontColor(MisakaColors.TEXT_SUB)
+        ForEach(group.banks, (bank: QuizBank) => {
+          this.bankCard(bank)
+        }, (bank: QuizBank): string => bank.id)
+      }
+      .width('100%')
+    }, (group: BankGroup): string => `group-${group.name}`)
   }
 
   @Builder

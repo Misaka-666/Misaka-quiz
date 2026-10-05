@@ -286,7 +286,8 @@ struct Index {
   }
 
   onPageShow(): void {
-    this.loadPracticePreferences();
+    // 不重载练习偏好：全部 preferredPractice*/背诵开关 写入点都在本页，
+    // 无条件重载会把练习 tab 未保存的临时选择回滚（aboutToAppear 已做首次加载）
     this.bump();
     // 仅冷启动决策一次，避免会话中途开启 Misaka 模式后返回首页又弹开屏
     if (!this.splashLaunched) {

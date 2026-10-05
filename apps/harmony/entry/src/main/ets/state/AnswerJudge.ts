@@ -2,7 +2,7 @@
  * 判分核心 — 1:1 移植自 Android QuizRepository.evaluateQuestion 及其辅助。
  * 纯函数，Node 可测（test/harmony-parser-regression/session-core.mjs）。
  */
-import { Question, QuestionType, StudyQuestionResult } from '../domain/Models';
+import { Question, QuestionType, StudyQuestionResult, Option } from '../domain/Models';
 import { hasStructuredAnswers, padUserAnswers, expectedAnswerText } from '../importer/model/MultiBlankSupport';
 
 export class QuestionCheckResult {
@@ -31,6 +31,47 @@ function sortedCopy(values: string[]): string[] {
 export function isAutoScoredQuestionType(type: string): boolean {
   return type === QuestionType.SINGLE || type === QuestionType.MULTIPLE ||
     type === QuestionType.JUDGE || type === QuestionType.BLANK;
+}
+
+/**
+ * 快速编辑答案解析 — 1:1 移植自 Android PracticeScreen.parseQuickEditAnswer。
+ * 整串 对/正确/是/TRUE/T/√→A、错/错误/否/FALSE/F/×/X→B；多字母全大写 token 拆单键；
+ * 只保留合法选项键并去重。BLANK/SHORT 原样整串保留。
+ */
+export function parseQuickEditAnswer(raw: string, type: string, options: Option[]): string[] {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) {
+    return [];
+  }
+  if (type !== QuestionType.SINGLE && type !== QuestionType.MULTIPLE && type !== QuestionType.JUDGE) {
+    return [trimmed];
+  }
+  const upper = trimmed.toUpperCase();
+  let normalized = upper;
+  if (upper === '正确' || upper === '对' || upper === '是' || upper === 'TRUE' || upper === 'T' || upper === '√') {
+    normalized = 'A';
+  } else if (upper === '错误' || upper === '错' || upper === '否' || upper === 'FALSE' || upper === 'F' ||
+    upper === '×' || upper === 'X') {
+    normalized = 'B';
+  }
+  const optionKeys = new Set<string>();
+  for (const option of options) {
+    optionKeys.add(option.key.toUpperCase());
+  }
+  const tokens: string[] = [];
+  for (const part of normalized.split(/[\s,，、/|;；]+/)) {
+    const token = part.trim().toUpperCase();
+    if (token.length === 0) {
+      continue;
+    }
+    const pieces: string[] = token.length > 1 && /^[A-Z]+$/.test(token) ? token.split('') : [token];
+    for (const piece of pieces) {
+      if (optionKeys.has(piece) && !tokens.includes(piece)) {
+        tokens.push(piece);
+      }
+    }
+  }
+  return tokens;
 }
 
 function isStructuredBlankAnswerCorrect(userAnswers: string[], acceptedAnswers: string[][]): boolean {

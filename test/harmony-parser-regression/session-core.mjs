@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 
 const base = '../../apps/harmony/entry/src/main/ets';
 const { Question, QuestionType, Option, QuizBank } = await import(new URL(`${base}/domain/Models.ts`, import.meta.url));
-const { evaluateQuestion, normalizeBlankAnswer, isAutoScoredQuestionType } = await import(new URL(`${base}/state/AnswerJudge.ts`, import.meta.url));
+const { evaluateQuestion, normalizeBlankAnswer, isAutoScoredQuestionType, parseQuickEditAnswer } = await import(new URL(`${base}/state/AnswerJudge.ts`, import.meta.url));
 const { JavaRandom, javaStringHashCode, practiceDisplayOptions } = await import(new URL(`${base}/state/OptionShuffle.ts`, import.meta.url));
 const {
   PracticeSessionCore, PracticeHost, bankPoolSources,
@@ -66,7 +66,25 @@ assert.ok(evaluateQuestion(mb, ['甲', 'also乙', '丙']).correct, '多空命中
 assert.ok(!evaluateQuestion(mb, ['甲', '', '丙']).correct, '多空有空判错');
 assert.ok(!evaluateQuestion(mb, ['甲', '乙']).correct, '多空缺一空判错');
 
-// ---------- 选项打乱 ----------
+// ---------- 快速编辑答案解析（对齐 Android parseQuickEditAnswer） ----------
+const abOptions = [new Option('A', '正确'), new Option('B', '错误')];
+const abcdOptions = ['A', 'B', 'C', 'D'].map((k) => new Option(k, `选项${k}`));
+assert.deepEqual(parseQuickEditAnswer('  ', QuestionType.JUDGE, abOptions), [], '空串');
+assert.deepEqual(parseQuickEditAnswer('对', QuestionType.JUDGE, abOptions), ['A'], '判断题「对」→A');
+assert.deepEqual(parseQuickEditAnswer('正确', QuestionType.JUDGE, abOptions), ['A']);
+assert.deepEqual(parseQuickEditAnswer('√', QuestionType.JUDGE, abOptions), ['A'], '√→A');
+assert.deepEqual(parseQuickEditAnswer('×', QuestionType.JUDGE, abOptions), ['B'], '×→B');
+assert.deepEqual(parseQuickEditAnswer('X', QuestionType.JUDGE, abOptions), ['B'], 'X→B');
+assert.deepEqual(parseQuickEditAnswer('FALSE', QuestionType.JUDGE, abOptions), ['B']);
+assert.deepEqual(parseQuickEditAnswer('ABC', QuestionType.MULTIPLE, abcdOptions), ['A', 'B', 'C'], '多字母拆单键');
+assert.deepEqual(parseQuickEditAnswer('a、c', QuestionType.MULTIPLE, abcdOptions), ['A', 'C'], '小写+顿号分隔');
+assert.deepEqual(parseQuickEditAnswer('A,C,A', QuestionType.MULTIPLE, abcdOptions), ['A', 'C'], '去重');
+assert.deepEqual(parseQuickEditAnswer('E', QuestionType.SINGLE, abcdOptions), [], '非法选项键过滤');
+assert.deepEqual(parseQuickEditAnswer('对 错', QuestionType.JUDGE, abOptions), [], '部分 token 不做对错映射（整串才映射）');
+assert.deepEqual(parseQuickEditAnswer(' 任意长答案 ', QuestionType.SHORT, abcdOptions), ['任意长答案'], '主观题整串保留');
+assert.deepEqual(parseQuickEditAnswer('甲/乙', QuestionType.BLANK, abcdOptions), ['甲/乙'], '填空不按选项键过滤');
+
+
 const shuffleQ = single('sh-q', ['B'], [new Option('A', '1'), new Option('B', '2'), new Option('C', '3'), new Option('D', '4')]);
 const d1 = practiceDisplayOptions(shuffleQ, true, 12345, 'bank#sh-q');
 const d2 = practiceDisplayOptions(shuffleQ, true, 12345, 'bank#sh-q');

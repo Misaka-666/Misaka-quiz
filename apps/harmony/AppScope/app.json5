@@ -2,8 +2,8 @@
   "app": {
     "bundleName": "com.reqir.misakaquiz",
     "vendor": "misaka",
-    "versionCode": 13,
-    "versionName": "0.9.3-harmony",
+    "versionCode": 14,
+    "versionName": "0.9.4-harmony",
     "icon": "$media:app_icon",
     "label": "$string:app_name"
   }

@@ -57,7 +57,7 @@ struct BankDetailPage {
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .layoutWeight(1)
-        if (this.bank() !== null && this.bankId !== this.repo.activeBankId) {
+        if (this.tick >= 0 && this.bank() !== null && this.bankId !== this.repo.activeBankId) {
           Text('设为当前')
             .fontSize(14)
             .fontColor(MisakaColors.PRIMARY)
@@ -72,21 +72,10 @@ struct BankDetailPage {
 
       Scroll() {
         Column({ space: 10 }) {
-          InfoNotice({ text: `${this.bank()?.questions.length ?? 0} 题 · 分组「${this.bank()?.groupName ?? ''}」` +
-            (this.slashedOfBank().length > 0 ? ` · 已斩 ${this.slashedOfBank().length} 题` : ''), warning: false })
-
-          ForEach(this.bank()?.questions ?? [], (question: Question, index: number) => {
-            this.questionRow(question, index)
-          }, (question: Question): string => question.id)
-
-          if (this.slashedOfBank().length > 0) {
-            Text('已斩题目（可恢复）')
-              .fontSize(14)
-              .fontWeight(FontWeight.Medium)
-              .margin({ top: 8 })
-            ForEach(this.slashedOfBank(), (question: Question, index: number) => {
-              this.slashedRow(question, index)
-            }, (question: Question): string => `slashed-${question.id}`)
+          if (this.tick % 2 === 0) {
+            this.detailBody()
+          } else {
+            this.detailBody()
           }
         }
         .padding({ left: 16, right: 16, bottom: 24 })
@@ -101,6 +90,26 @@ struct BankDetailPage {
       height: SheetSize.LARGE,
       dragBar: true
     })
+  }
+
+  @Builder
+  detailBody() {
+    InfoNotice({ text: `${this.bank()?.questions.length ?? 0} 题 · 分组「${this.bank()?.groupName ?? ''}」` +
+      (this.slashedOfBank().length > 0 ? ` · 已斩 ${this.slashedOfBank().length} 题` : ''), warning: false })
+
+    ForEach(this.bank()?.questions ?? [], (question: Question, index: number) => {
+      this.questionRow(question, index)
+    }, (question: Question): string => question.id)
+
+    if (this.slashedOfBank().length > 0) {
+      Text('已斩题目（可恢复）')
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+        .margin({ top: 8 })
+      ForEach(this.slashedOfBank(), (question: Question, index: number) => {
+        this.slashedRow(question, index)
+      }, (question: Question): string => `slashed-${question.id}`)
+    }
   }
 
   @Builder
