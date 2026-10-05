@@ -774,19 +774,12 @@ struct Index {
         Text('刷题偏好')
           .fontSize(15)
           .fontWeight(FontWeight.Medium)
-        Column({ space: 4 }) {
-          this.prefToggle('选项打乱', '单选/多选练习时随机打乱选项顺序', 'practiceOptionShuffleEnabled', KEY_PRACTICE_OPTION_SHUFFLE_ENABLED);
-          this.prefToggle('斩题开关', '练习页显示斩题按钮，斩掉的题不再出现', 'practiceSlashEnabled', KEY_PRACTICE_SLASH_ENABLED);
-          this.prefToggle('快速编辑', '练习页可随手修正题干/答案/解析', 'practiceQuickEditEnabled', KEY_PRACTICE_QUICK_EDIT_ENABLED);
-          this.prefToggle('滑动切题', '练习页左右滑动切换题目', 'swipeNavigationEnabled', KEY_SWIPE_NAVIGATION_ENABLED);
-          this.prefToggle('选项自动提交', '单选/判断选中后立即提交', 'practiceAutoSubmitEnabled', KEY_PRACTICE_AUTO_SUBMIT_ENABLED);
-          this.prefToggle('自动下一题', '答对后自动进入下一题', 'practiceAutoNextEnabled', KEY_PRACTICE_AUTO_NEXT_ENABLED);
-          this.prefToggle('批量自动下一题', '批量模式选完单选/判断自动跳下一题', 'practiceBatchAutoNextEnabled', KEY_PRACTICE_BATCH_AUTO_NEXT_ENABLED);
+        // tick 奇偶翻转重建：开关值读 repo.settings 纯数据，bump 后需换支重建子树刷新（同 homeTab/WrongBook 模式）
+        if (this.tick % 2 === 0) {
+          this.prefToggles()
+        } else {
+          this.prefToggles()
         }
-        .backgroundColor(MisakaColors.CARD)
-        .borderRadius(12)
-        .padding(8)
-        .width('100%')
 
         InfoNotice({ text: `Misaka Quiz ${APP_VERSION_LABEL} · 鸿蒙原生\n解析器回归 39/39 · M8 AI 全家桶（核对/解析/重构/单题分析/问 AI/题库分析）`, warning: false })
       }
@@ -820,6 +813,23 @@ struct Index {
     .onClick((): void => {
       onTap();
     })
+  }
+
+  @Builder
+  prefToggles() {
+    Column({ space: 4 }) {
+      this.prefToggle('选项打乱', '单选/多选练习时随机打乱选项顺序', 'practiceOptionShuffleEnabled', KEY_PRACTICE_OPTION_SHUFFLE_ENABLED);
+      this.prefToggle('斩题开关', '练习页显示斩题按钮，斩掉的题不再出现', 'practiceSlashEnabled', KEY_PRACTICE_SLASH_ENABLED);
+      this.prefToggle('快速编辑', '练习页可随手修正题干/答案/解析', 'practiceQuickEditEnabled', KEY_PRACTICE_QUICK_EDIT_ENABLED);
+      this.prefToggle('滑动切题', '练习页左右滑动切换题目', 'swipeNavigationEnabled', KEY_SWIPE_NAVIGATION_ENABLED);
+      this.prefToggle('选项自动提交', '单选/判断选中后立即提交', 'practiceAutoSubmitEnabled', KEY_PRACTICE_AUTO_SUBMIT_ENABLED);
+      this.prefToggle('自动下一题', '答对后自动进入下一题', 'practiceAutoNextEnabled', KEY_PRACTICE_AUTO_NEXT_ENABLED);
+      this.prefToggle('批量自动下一题', '批量模式选完单选/判断自动跳下一题', 'practiceBatchAutoNextEnabled', KEY_PRACTICE_BATCH_AUTO_NEXT_ENABLED);
+    }
+    .backgroundColor(MisakaColors.CARD)
+    .borderRadius(12)
+    .padding(8)
+    .width('100%')
   }
 
   @Builder
