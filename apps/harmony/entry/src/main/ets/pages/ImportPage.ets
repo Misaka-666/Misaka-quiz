@@ -752,14 +752,17 @@ export struct ImportPage {
           this.editAnalysis = value;
         })
       if (this.repo().settings.aiAnalysisEnabled) {
-        PillButton({
-          label: this.editAiBusy ? 'AI 解析生成中…'
-            : (this.editAnalysis.trim().length === 0 ? 'AI 补解析' : 'AI 优化解析'),
-          primary: false, grow: true, isEnabled: !this.editAiBusy,
-          onTap: (): void => {
-            this.runEditorAiAnalysis();
-          }
-        })
+        Row() {
+          PillButton({
+            label: this.editAiBusy ? 'AI 解析生成中…'
+              : (this.editAnalysis.trim().length === 0 ? 'AI 补解析' : 'AI 优化解析'),
+            primary: false, grow: true, isEnabled: !this.editAiBusy,
+            onTap: (): void => {
+              this.runEditorAiAnalysis();
+            }
+          })
+        }
+        .width('100%')
         if (this.editAiBusy) {
           Text(this.editAiStream.length > 0
             ? `生成中：…${this.editAiStream.substring(Math.max(0, this.editAiStream.length - 160))}`

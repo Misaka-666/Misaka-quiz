@@ -4,7 +4,7 @@
  * 字号档位/滑动切题/未提交补答/顺序进度保存退出。阔折叠（宽屏）双栏：左答题卡+右题目。
  * 共享组件用 @Component（@Prop 状态可响应；全局 @Builder 按值传参不刷新，勿回退）。
  */
-import { router, display } from '@kit.ArkUI';
+import { router, mediaquery } from '@kit.ArkUI';
 import { QuizRepository } from '../state/QuizRepository';
 import { Question, QuestionType, Option, QuestionImage } from '../domain/Models';
 import { hasStructuredAnswers } from '../importer/model/MultiBlankSupport';
@@ -46,6 +46,9 @@ struct PracticePage {
   @State freeAskStream: string = '';
   private aiStateKey: string = '';
   private autoNextTimer: number = -1;
+  // 阔折叠双栏断点监听（对齐 Index wideListener 模式）：答题中折叠/展开需实时切换单双栏，
+  // aboutToAppear 一次性读 display 宽度会在折叠切换后留下陈旧布局（题列被挤成一条）。
+  private wideListener: mediaquery.MediaQueryListener | null = null;
 
   private bump(): void {
     this.tick += 1;
@@ -459,18 +462,22 @@ struct PracticePage {
       return;
     }
     this.syncTextMirrors();
-    try {
-      const d: display.Display = display.getDefaultDisplaySync();
-      this.isWide = d.width / d.densityPixels >= 540;
-    } catch (_err) {
-      this.isWide = false;
-    }
+    this.wideListener = mediaquery.matchMediaSync('(min-width: 540vp)');
+    this.isWide = this.wideListener.matches;
+    this.wideListener.on('change', (result: mediaquery.MediaQueryResult): void => {
+      this.isWide = result.matches;
+      this.bump();
+    });
   }
 
   aboutToDisappear(): void {
     if (this.autoNextTimer >= 0) {
       clearTimeout(this.autoNextTimer);
       this.autoNextTimer = -1;
+    }
+    if (this.wideListener !== null) {
+      this.wideListener.off('change');
+      this.wideListener = null;
     }
   }
 
@@ -722,14 +729,17 @@ struct PracticePage {
   aiPanel(question: Question) {
     if (this.canShowAiPanels()) {
       Column({ space: 10 }) {
-        PillButton({
-          label: this.aiQuestionLoading ? 'AI 分析中'
-            : (this.aiQuestionAnalysis !== null ? '重新分析本题' : 'AI 分析本题'),
-          primary: false, grow: true, isEnabled: !this.aiQuestionLoading,
-          onTap: (): void => {
-            this.runSingleQuestionAiAnalysis();
-          }
-        })
+        Row() {
+          PillButton({
+            label: this.aiQuestionLoading ? 'AI 分析中'
+              : (this.aiQuestionAnalysis !== null ? '重新分析本题' : 'AI 分析本题'),
+            primary: false, grow: true, isEnabled: !this.aiQuestionLoading,
+            onTap: (): void => {
+              this.runSingleQuestionAiAnalysis();
+            }
+          })
+        }
+        .width('100%')
         if (this.aiQuestionLoading) {
           InfoNotice({ text: 'AI 正在分析当前题目，请稍候。', warning: false })
         }
@@ -788,9 +798,12 @@ struct PracticePage {
         }
 
         if (!this.freeAskExpanded) {
-          PillButton({ label: '问 AI', primary: false, grow: true, onTap: (): void => {
-            this.freeAskExpanded = true;
-          } })
+          Row() {
+            PillButton({ label: '问 AI', primary: false, grow: true, onTap: (): void => {
+              this.freeAskExpanded = true;
+            } })
+          }
+          .width('100%')
         } else {
           Row({ space: 8 }) {
             TextInput({ text: this.freeAskInput, placeholder: '追问当前题目…' })
@@ -858,11 +871,7 @@ struct PracticePage {
   @Builder
   stemBlock(question: Question) {
     Column({ space: 10 }) {
-      if (question.number.length > 0) {
-        Text(question.number)
-          .fontSize(12)
-          .fontColor(MisakaColors.TEXT_SUB)
-      }
+      // Android 答题主视图不展示题库题号（question.number），只保留题型/进度 chip
       Text(question.question.length > 0 ? question.question : '（无题干）')
         .fontSize(this.repo.settings.questionFontSizeSp())
         .lineHeight(this.repo.settings.questionLineHeightSp())

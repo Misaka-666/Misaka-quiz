@@ -285,9 +285,13 @@ struct ExamSetupPage {
             InfoNotice({ text: this.errorText, warning: true })
           }
 
-          PillButton({ label: `开始考试（${this.selectedTotal()} 题 / ${this.durationMinutes} 分钟）`, primary: true, isEnabled: this.selectedTotal() > 0, onTap: (): void => {
-            this.startExam();
-          }, grow: true })
+          // layoutWeight 按钮直挂 Column 会作用于纵向主轴（M4 教训），必须包 Row
+          Row() {
+            PillButton({ label: `开始考试（${this.selectedTotal()} 题 / ${this.durationMinutes} 分钟）`, primary: true, isEnabled: this.selectedTotal() > 0, onTap: (): void => {
+              this.startExam();
+            }, grow: true })
+          }
+          .width('100%')
         }
         .padding({ left: 16, right: 16, bottom: 24 })
         .width('100%')

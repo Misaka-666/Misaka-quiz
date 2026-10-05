@@ -76,9 +76,12 @@ struct AboutPage {
               .fontSize(14)
               .fontColor(MisakaColors.PRIMARY)
               .width('100%')
-            PillButton({ label: '打开 GitHub 项目页', primary: true, isEnabled: true, onTap: (): void => {
-              this.openProject();
-            }, grow: true })
+            Row() {
+              PillButton({ label: '打开 GitHub 项目页', primary: true, isEnabled: true, onTap: (): void => {
+                this.openProject();
+              }, grow: true })
+            }
+            .width('100%')
           }
           .padding(14)
           .backgroundColor(MisakaColors.CARD)

@@ -325,9 +325,9 @@ struct Index {
       .padding(16)
       .width('100%')
     }
+    .layoutWeight(1)
     .scrollBar(BarState.Off)
     .width('100%')
-    .height('100%')
   }
 
   // tick 奇偶翻转重建：这些卡片读 repo 纯数据，需在 onPageShow bump 后刷新
@@ -418,7 +418,33 @@ struct Index {
   practiceTab() {
     Scroll() {
       Column({ space: 14 }) {
-        InfoNotice({ text: `练习范围：${this.activeBankName()} · 可用 ${this.poolCount()} 题（可在首页-题库管理切换）`, warning: false })
+        // header 卡对齐 Android PracticeScreen 首卡：题库名左、开始练习右（矮屏不滚动也永远可见）
+        Row({ space: 12 }) {
+          Column({ space: 4 }) {
+            Text(this.activeBankName())
+              .fontSize(18)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(MisakaColors.TEXT)
+              .maxLines(2)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+            Text(`可用 ${this.poolCount()} 题 · 可在首页-题库管理切换`)
+              .fontSize(12)
+              .fontColor(MisakaColors.TEXT_SUB)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+          }
+          .alignItems(HorizontalAlign.Start)
+          .layoutWeight(1)
+
+          PillButton({ label: '开始练习', primary: this.selectedAvailable() > 0, isEnabled: this.selectedAvailable() > 0, onTap: (): void => {
+            this.startPractice();
+          } })
+        }
+        .width('100%')
+        .padding(14)
+        .backgroundColor(MisakaColors.CARD)
+        .borderRadius(14)
+        .alignItems(VerticalAlign.Center)
 
         Text('练习范围')
           .fontSize(15)
@@ -561,16 +587,21 @@ struct Index {
             : '当前题库没有可练习题目，请先到「导入」添加题库。', warning: true })
         }
 
-        PillButton({ label: `开始练习（${this.resolvedCount()} 题）`, primary: true, isEnabled: this.selectedAvailable() > 0, onTap: (): void => {
-          this.startPractice();
-        }, grow: true })
+        // M4 教训：layoutWeight 按钮直挂 Column 会作用于纵向主轴（宽度塌成内容宽、高度虚增、
+        // Scroll 内容高度测量被污染 → max scroll 差一个按钮高度，底部按钮永远够不到）。必须包 Row。
+        Row() {
+          PillButton({ label: `开始练习（${this.resolvedCount()} 题）`, primary: true, isEnabled: this.selectedAvailable() > 0, onTap: (): void => {
+            this.startPractice();
+          }, grow: true })
+        }
+        .width('100%')
       }
       .padding(16)
       .width('100%')
     }
+    .layoutWeight(1)
     .scrollBar(BarState.Off)
     .width('100%')
-    .height('100%')
   }
 
   @Builder
@@ -762,9 +793,9 @@ struct Index {
       .padding(16)
       .width('100%')
     }
+    .layoutWeight(1)
     .scrollBar(BarState.Off)
     .width('100%')
-    .height('100%')
   }
 
   @Builder

@@ -357,9 +357,12 @@ struct AiSettingsPage {
           .fontSize(12)
           .fontColor(MisakaColors.TEXT_SUB)
           .width('100%')
-        PillButton({ label: '保存处理限制', primary: false, grow: true, onTap: (): void => {
-          this.saveLimits();
-        } })
+        Row() {
+          PillButton({ label: '保存处理限制', primary: false, grow: true, onTap: (): void => {
+            this.saveLimits();
+          } })
+        }
+        .width('100%')
         if (this.limitStatusText.length > 0) {
           Text(this.limitStatusText)
             .fontSize(12)
