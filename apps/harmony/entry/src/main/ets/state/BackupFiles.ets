@@ -43,7 +43,8 @@ function readBytes(path: string): Uint8Array {
   return new Uint8Array(buf);
 }
 
-function writeBytes(path: string, data: ArrayBuffer | Uint8Array): void {
+// 只收 ArrayBuffer（writeSync 不认 Uint8Array 视图；唯一调用方 openBackupZip 传入的正是整段 buffer）
+function writeBytes(path: string, data: ArrayBuffer): void {
   const file: fileIo.File = fileIo.openSync(path, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
   try {
     fileIo.writeSync(file.fd, data);
@@ -129,6 +130,7 @@ export async function buildBackupZipBytes(context: common.UIAbilityContext, req:
       fileIo.copyFileSync(source, `${tmpRoot}/${backupPath}`);
     }
     await zlib.compressFile(tmpRoot, zipPath, { level: 9 });
+    // readBytes 自建等长 buffer、视图永远对齐，.buffer 即精确 ZIP 内容（若改 readBytes 需保持该不变量）
     return readBytes(zipPath).buffer as ArrayBuffer;
   } catch (_err) {
     return null;

@@ -27,6 +27,7 @@ import {
 } from './AiPrompts';
 
 const DEFAULT_AI_TIMEOUT_SECONDS = 60;
+const AI_TIMEOUT_MESSAGE = 'AI 请求超时，请检查网络或适当调大超时秒数。';
 
 function clampInt(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -37,7 +38,7 @@ function describeNetworkError(err: Object): string {
   const code = typeof be.code === 'number' ? be.code : 0;
   const message = typeof be.message === 'string' ? be.message : String(err);
   if (code === 2300028) {
-    return 'AI 请求超时，请检查网络或适当调大超时秒数。';
+    return AI_TIMEOUT_MESSAGE;
   }
   if (code === 2300006 || code === 2300007) {
     return '无法连接 AI 接口域名，请检查 API 地址或网络。';
@@ -211,7 +212,23 @@ export class MisakaAiClient {
       let responseCode = 0;
       let rawErrorBody = '';
       let settled = false;
+      let watchdogId = -1;
+      // 停滞看门狗：requestInStream 收到响应头即 resolve，此后连接停滞（无数据也无 dataEnd）
+      // 时没有任何回调会触发，Promise 永久挂起。收到数据即重置 —— 对齐非流式路径
+      // readTimeout 的不活动语义，不误杀耗时超过超时秒数但仍在正常出字的长流式生成。
+      const armWatchdog = (): void => {
+        if (watchdogId >= 0) {
+          clearTimeout(watchdogId);
+        }
+        watchdogId = setTimeout((): void => {
+          fail(AI_TIMEOUT_MESSAGE);
+        }, timeoutMillis);
+      };
       const cleanup = (): void => {
+        if (watchdogId >= 0) {
+          clearTimeout(watchdogId);
+          watchdogId = -1;
+        }
         try {
           client.off('dataReceive');
           client.off('dataEnd');
@@ -246,6 +263,7 @@ export class MisakaAiClient {
         resolve(full);
       };
       client.on('dataReceive', (chunk: ArrayBuffer): void => {
+        armWatchdog();
         const text: string = decoder.decodeWithStream(new Uint8Array(chunk), { stream: true });
         if (rawErrorBody.length < 8192) {
           rawErrorBody += text;
@@ -262,6 +280,7 @@ export class MisakaAiClient {
           finalize();
         }
       });
+      armWatchdog();
       client.requestInStream(endpoint, {
         method: http.RequestMethod.POST,
         header: {

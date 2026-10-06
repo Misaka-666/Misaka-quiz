@@ -581,6 +581,32 @@ export function normalizeBankGroupName(rawName: string | null): string {
   return trimmed.length > 0 ? trimmed : DEFAULT_BANK_GROUP_NAME;
 }
 
+/** 组内撞名时追加 " 2/3/..."（对齐 Android uniqueBankNameInGroup/uniqueBankNameForRename；excludeBankId 供改名排除自身） */
+export function uniqueBankNameAmong(banks: QuizBank[], rawName: string, groupName: string,
+  excludeBankId: string | null, fallbackName: string): string {
+  const cleanGroupName = normalizeBankGroupName(groupName);
+  const baseName = rawName.trim().length > 0 ? rawName.trim() : fallbackName;
+  const existingNames = new Set<string>();
+  for (const bank of banks) {
+    if (excludeBankId !== null && bank.id === excludeBankId) {
+      continue;
+    }
+    if (normalizeBankGroupName(bank.groupName) === cleanGroupName) {
+      existingNames.add(bank.name);
+    }
+  }
+  if (!existingNames.has(baseName)) {
+    return baseName;
+  }
+  let index = 2;
+  let candidate = `${baseName} ${index}`;
+  while (existingNames.has(candidate)) {
+    index += 1;
+    candidate = `${baseName} ${index}`;
+  }
+  return candidate;
+}
+
 export function bankToJson(bank: QuizBank, registerAsset?: (image: QuestionImage) => string | null): Record<string, Object> {
   const questions: Object[] = [];
   for (const q of bank.questions) {

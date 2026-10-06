@@ -6,7 +6,7 @@ import { AppSettings } from './AppSettings';
 import {
   QuizBank, Question, QuestionType, Option, WrongQuestionEntry, SlashedQuestionEntry,
   FavoriteQuestionEntry, StudyRecord, WrongStatus, DEFAULT_BANK_GROUP_NAME, normalizeBankGroupName,
-  bankToJson, parseBank, parseWebQuestionBank, wrongEntryToJson, parseWrongEntry, slashedEntryToJson,
+  uniqueBankNameAmong, bankToJson, parseBank, parseWebQuestionBank, wrongEntryToJson, parseWrongEntry, slashedEntryToJson,
   parseSlashedEntry, favoriteEntryToJson, parseFavoriteEntry, studyRecordToJson,
   parseStudyRecord
 } from '../domain/Models';
@@ -66,7 +66,12 @@ function isJsonObject(value: Object | undefined): boolean {
 function writeBytesToFile(path: string, data: Uint8Array): void {
   const file: fileIo.File = fileIo.openSync(path, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
   try {
-    fileIo.writeSync(file.fd, data.buffer as ArrayBuffer);
+    // Uint8Array 可能是底层 buffer 的子视图，直接写 data.buffer 会落盘整段底层数据；
+    // 未对齐时用 slice() 复制出恰好等于视图内容的独立 buffer
+    const bytes: ArrayBuffer = data.byteOffset === 0 && data.byteLength === data.buffer.byteLength
+      ? data.buffer as ArrayBuffer
+      : data.slice().buffer as ArrayBuffer;
+    fileIo.writeSync(file.fd, bytes);
   } finally {
     fileIo.closeSync(file);
   }
@@ -478,6 +483,14 @@ export class QuizRepository {
   }
 
   private loadFromState(state: Record<string, Object>): void {
+    // init 可能在 ability 重建（进程未死、单例仍在）时二次触发，先复位再装载，避免往已有数组 push 导致数据翻倍
+    this.banks = [];
+    this.activeBankId = '';
+    this.wrongBook = [];
+    this.slashedQuestions = [];
+    this.favoriteQuestions = [];
+    this.studyRecords = [];
+    this.practiceSequentialProgress = {};
     for (const raw of toJsonArray(state['banks'])) {
       if (isJsonObject(raw)) {
         this.banks.push(parseBank(raw));
@@ -694,14 +707,30 @@ export class QuizRepository {
     return bank;
   }
 
+  // 关联清理对齐 Android deleteBank：错题/斩题/收藏/随库记录 + 两级顺序进度键 + 会话复位
   deleteBank(bankId: string): void {
     const index = this.banks.findIndex((bank: QuizBank): boolean => bank.id === bankId);
-    if (index >= 0) {
-      this.banks.splice(index, 1);
+    if (index < 0) {
+      return;
     }
+    this.banks.splice(index, 1);
+    this.wrongBook = this.wrongBook.filter((entry: WrongQuestionEntry): boolean => entry.bankId !== bankId);
+    this.slashedQuestions = this.slashedQuestions.filter((entry: SlashedQuestionEntry): boolean => entry.bankId !== bankId);
+    this.favoriteQuestions = this.favoriteQuestions.filter((entry: FavoriteQuestionEntry): boolean => entry.bankId !== bankId);
+    this.studyRecords = this.studyRecords.filter((record: StudyRecord): boolean => record.bankId !== bankId);
+    // ArkTS 禁 delete 操作符，重建 Record 回收两级进度键（裸 id + BANK: 前缀，与 Android 一致）
+    const progress: Record<string, number> = {};
+    for (const key of Object.keys(this.practiceSequentialProgress)) {
+      if (key !== bankId && key !== `BANK:${bankId}`) {
+        progress[key] = this.practiceSequentialProgress[key];
+      }
+    }
+    this.practiceSequentialProgress = progress;
     if (this.activeBankId === bankId) {
       this.activeBankId = this.banks.length > 0 ? this.banks[0].id : '';
     }
+    this.practice.resetState();
+    this.exam.reset();
     this.persist();
   }
 
@@ -710,7 +739,29 @@ export class QuizRepository {
     if (bank === undefined) {
       return false;
     }
-    bank.name = newName;
+    const cleanName = uniqueBankNameAmong(this.banks, newName, bank.groupName, bankId, '未命名题库');
+    bank.name = cleanName;
+    // 错题/收藏/记录内嵌的库名快照同步（对齐 Android updateBankInfo）
+    for (const entry of this.wrongBook) {
+      if (entry.bankId === bankId) {
+        entry.bankName = cleanName;
+      }
+    }
+    for (const entry of this.favoriteQuestions) {
+      if (entry.bankId === bankId) {
+        entry.bankName = cleanName;
+      }
+    }
+    for (const record of this.studyRecords) {
+      if (record.bankId === bankId) {
+        record.bankName = cleanName;
+      }
+      for (const result of record.questionResults) {
+        if (result.sourceBankId === bankId) {
+          result.sourceBankName = cleanName;
+        }
+      }
+    }
     this.persist();
     return true;
   }
@@ -733,26 +784,9 @@ export class QuizRepository {
     return total;
   }
 
-  // 组内重名时追加 " 2/3/..."（对齐 Android uniqueBankNameInGroup）
+  // 组内重名时追加 " 2/3/..."（实现在 Models.uniqueBankNameAmong，Node 可测）
   private uniqueBankNameInGroup(rawName: string, groupName: string): string {
-    const cleanGroupName = normalizeBankGroupName(groupName);
-    const baseName = rawName.trim().length > 0 ? rawName.trim() : '导入题库';
-    const existingNames = new Set<string>();
-    for (const bank of this.banks) {
-      if (normalizeBankGroupName(bank.groupName) === cleanGroupName) {
-        existingNames.add(bank.name);
-      }
-    }
-    if (!existingNames.has(baseName)) {
-      return baseName;
-    }
-    let index = 2;
-    let candidate = `${baseName} ${index}`;
-    while (existingNames.has(candidate)) {
-      index += 1;
-      candidate = `${baseName} ${index}`;
-    }
-    return candidate;
+    return uniqueBankNameAmong(this.banks, rawName, groupName, null, '导入题库');
   }
 
   // 供 M1 设备自检：生成两道示例题并入库

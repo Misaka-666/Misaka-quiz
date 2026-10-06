@@ -121,4 +121,23 @@ assert.equal(rBack.durationSeconds, 120);
 assert.equal(rBack.questionResults[0].correct, true);
 assert.deepEqual(rBack.questionResults[0].userBlankAnswers, ['A', 'B'], '解析时空多空答案回落 userAnswer');
 
+// 8. 组内撞名查重（v0.9.6 A5：导入 uniqueBankNameInGroup / 改名 uniqueBankNameForRename 共用）
+const g1a = new QuizBank('b1', '题库1', '组A');
+const g1b = new QuizBank('b2', '题库1 2', '组A');
+const g2 = new QuizBank('b3', '题库1', '组B');
+const all = [g1a, g1b, g2];
+const uniqueBankNameAmong = mod.uniqueBankNameAmong;
+// 导入：不排除任何库
+assert.equal(uniqueBankNameAmong(all, '新库', '组A', null, '导入题库'), '新库');
+assert.equal(uniqueBankNameAmong(all, '题库1', '组A', null, '导入题库'), '题库1 3', '撞名追加下一个可用序号');
+assert.equal(uniqueBankNameAmong(all, '题库1 2', '组A', null, '导入题库'), '题库1 2 2');
+assert.equal(uniqueBankNameAmong(all, '题库1', '组B', null, '导入题库'), '题库1 2', '跨组同名不查重');
+assert.equal(uniqueBankNameAmong(all, '  ', '组A', null, '导入题库'), '导入题库', '空名回退');
+// 改名：排除自身
+assert.equal(uniqueBankNameAmong(all, '题库1', '组A', 'b1', '未命名题库'), '题库1', '改回自己的名字不变');
+assert.equal(uniqueBankNameAmong(all, '题库1 2', '组A', 'b1', '未命名题库'), '题库1 2 2', '撞他库名追加序号');
+assert.equal(uniqueBankNameAmong(all, '题库1', '组B', 'b3', '未命名题库'), '题库1');
+assert.equal(uniqueBankNameAmong(all, '', '组A', 'b1', '未命名题库'), '未命名题库', '改名空名回退');
+assert.equal(uniqueBankNameAmong([], '题库1', '未分组', null, '导入题库'), '题库1');
+
 console.log('MODELS_ROUNDTRIP_PASS');
