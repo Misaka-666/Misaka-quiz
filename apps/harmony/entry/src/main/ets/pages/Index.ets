@@ -28,7 +28,7 @@ import {
   KEY_PRACTICE_PREFERRED_COUNT_MODE, KEY_PRACTICE_PREFERRED_CUSTOM_COUNT,
   KEY_PRACTICE_PREFERRED_ORDER_MODE, KEY_PRACTICE_PREFERRED_MODE, KEY_PRACTICE_PREFERRED_BATCH_SIZE_MODE,
   KEY_PRACTICE_PREFERRED_BATCH_CUSTOM_SIZE, KEY_PRACTICE_PREFERRED_TYPE_NAMES,
-  KEY_DARK_THEME_ENABLED, applyAppColorMode
+  KEY_DARK_THEME_ENABLED, applyAppColorMode, applyAppWindowColors
 } from '../state/AppSettings';
 
 // 对齐 Android MisakaMotion：开屏保持/淡出时长
@@ -80,6 +80,7 @@ struct Index {
     s.darkThemeEnabled = !s.darkThemeEnabled;
     s.putBool(KEY_DARK_THEME_ENABLED, s.darkThemeEnabled);
     applyAppColorMode(this.context(), s.darkThemeEnabled);
+    void applyAppWindowColors(this.context(), s.darkThemeEnabled);
     this.bump();
   }
 
@@ -179,6 +180,23 @@ struct Index {
   // ---------- 启动练习 ----------
 
   private startPractice(): void {
+    if (this.repo.practice.questions.length > 0) {
+      this.getUIContext().showAlertDialog({
+        message: '开始新练习将结束上次练习。',
+        primaryButton: { value: '开始新练习', action: (): void => {
+          this.repo.practice.endSession();
+          this.beginPractice();
+        } },
+        secondaryButton: { value: '继续上次练习', action: (): void => {
+          router.pushUrl({ url: 'pages/PracticePage' });
+        } }
+      });
+      return;
+    }
+    this.beginPractice();
+  }
+
+  private beginPractice(): void {
     const pool = this.repo.poolSources();
     if (pool.length === 0 || this.selectedAvailable() <= 0) {
       return;
@@ -200,6 +218,7 @@ struct Index {
     if (!started) {
       return;
     }
+    this.repo.persist();
     this.persistPracticePreferences();
     router.pushUrl({ url: 'pages/PracticePage' });
   }
@@ -447,6 +466,29 @@ struct Index {
         .borderRadius(14)
         .alignItems(VerticalAlign.Center)
 
+        if (this.repo.practice.questions.length > 0 && this.tick >= 0) {
+          Row() {
+            PillButton({ label: `继续练习（${this.repo.practice.index + 1}/${this.repo.practice.questions.length}）`,
+              primary: true, grow: true, onTap: (): void => {
+                router.pushUrl({ url: 'pages/PracticePage' });
+              } })
+          }
+          .width('100%')
+        }
+        if (this.repo.savedPractices.length > 0 && this.tick >= 0) {
+          Column({ space: 8 }) {
+            Text('暂存练习').fontSize(15).fontWeight(FontWeight.Medium)
+            ForEach(this.repo.savedPractices, (saved: Record<string, Object>, index: number) => {
+              Row() {
+                PillButton({ label: `${saved['transferred'] === true ? '已接续：' : ''}${saved['sourceLabel'] ?? '练习'}（第 ${Number(saved['index']) + 1} 题）`,
+                  grow: true, onTap: (): void => {
+                    if (this.repo.switchSavedPractice(index)) { router.pushUrl({ url: 'pages/PracticePage' }); }
+                    this.bump();
+                  } })
+              }.width('100%')
+            })
+          }.width('100%').alignItems(HorizontalAlign.Start)
+        }
         Text('练习范围')
           .fontSize(15)
           .fontWeight(FontWeight.Medium)
@@ -781,8 +823,6 @@ struct Index {
         } else {
           this.prefToggles()
         }
-
-        InfoNotice({ text: `Misaka Quiz ${APP_VERSION_LABEL} · 鸿蒙原生\n解析器回归 39/39 · M8 AI 全家桶（核对/解析/重构/单题分析/问 AI/题库分析）`, warning: false })
       }
       .padding(16)
       .width('100%')

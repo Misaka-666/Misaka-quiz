@@ -1,23 +1,24 @@
 /**
- * M5 错题本 — 作用域（当前题库/全部/分组/指定题库）、掌握筛选与排序、智能复习（今日到期）、
- * 单题打开/手动掌握/移出、作用域清空、刷当前筛选。1:1 对齐 Android WrongBookScreen。
+ * 错题本 — 题库范围、掌握状态与题型筛选、手动复习排序、今日到期复习。
  */
 import { router } from '@kit.ArkUI';
 import { QuizRepository } from '../state/QuizRepository';
 import {
-  WrongQuestionEntry, WrongStatus, Question, QuizBank, DEFAULT_BANK_GROUP_NAME
+  WrongQuestionEntry, WrongStatus, Question, QuestionType, QuizBank, DEFAULT_BANK_GROUP_NAME
 } from '../domain/Models';
 import {
-  sortWrongEntries,
+  filterWrongEntries, sortWrongEntries,
   WRONG_FILTER_NOT_MASTERED, WRONG_FILTER_MASTERED, WRONG_FILTER_ALL,
-  WRONG_SORT_RECENT, WRONG_SORT_COUNT, WRONG_SORT_MASTERY,
+  WRONG_SORT_RECENT, WRONG_SORT_COUNT, WRONG_SORT_MASTERY, WRONG_SORT_RANDOM,
   WRONG_BOOK_SCOPE_CURRENT_BANK, WRONG_BOOK_SCOPE_ALL_BANKS, WRONG_BOOK_SCOPE_GROUP, WRONG_BOOK_SCOPE_BANK
 } from '../state/WrongBookOps';
 import { hasStructuredAnswers, expectedAnswerText } from '../importer/model/MultiBlankSupport';
 import {
-  MisakaColors, PillButton, StatusChip, TypeBadge, InfoNotice, SettingToggleRow,
-  formatShortTimestamp
+  MisakaColors, PillButton, SmallChip, StatusChip, TypeBadge, InfoNotice, SettingToggleRow,
+  TYPE_COMPACT_LABELS, formatShortTimestamp
 } from './common/QuizWidgets';
+
+const WRONG_BOOK_QUESTION_TYPES: string[] = ['', QuestionType.SINGLE, QuestionType.MULTIPLE, QuestionType.JUDGE];
 
 class ScopeGroupInfo {
   name: string;
@@ -36,6 +37,7 @@ struct WrongBookPage {
   private repo: QuizRepository = QuizRepository.getInstance();
   @State tick: number = 0;
   @State filter: string = WRONG_FILTER_NOT_MASTERED;
+  @State questionType: string = '';
   @State sort: string = WRONG_SORT_RECENT;
   @State showScopeSheet: boolean = false;
   @State expandedScopeGroups: string[] = [];
@@ -50,20 +52,7 @@ struct WrongBookPage {
   }
 
   private filteredEntries(): WrongQuestionEntry[] {
-    const scoped = this.scopedEntries();
-    let kept = scoped;
-    if (this.filter === WRONG_FILTER_NOT_MASTERED) {
-      kept = scoped.filter((entry): boolean => entry.status !== WrongStatus.MASTERED);
-    } else if (this.filter === WRONG_FILTER_MASTERED) {
-      kept = scoped.filter((entry): boolean => entry.status === WrongStatus.MASTERED);
-    }
-    return sortWrongEntries(kept, this.sort);
-  }
-
-  /** 当前筛选下可刷的（未掌握 + 未斩题） */
-  private reviewEntries(): WrongQuestionEntry[] {
-    return this.filteredEntries()
-      .filter((entry): boolean => !this.repo.isQuestionSlashed(entry.bankId, entry.question));
+    return sortWrongEntries(filterWrongEntries(this.scopedEntries(), this.filter, this.questionType), this.sort);
   }
 
   private notMasteredCount(): number {
@@ -119,7 +108,7 @@ struct WrongBookPage {
   }
 
   private startFilteredPractice(): void {
-    if (this.repo.startWrongBookPractice(this.reviewEntries(), false, '错题本')) {
+    if (this.repo.startWrongBookPractice(this.filteredEntries(), false, '错题本', this.sort === WRONG_SORT_RANDOM)) {
       router.pushUrl({ url: 'pages/PracticePage' });
     }
   }
@@ -246,7 +235,7 @@ struct WrongBookPage {
         .borderRadius(14)
         .width('100%')
       } else {
-        this.summaryCard()
+        this.summaryCard(this.repo.wrongBookPracticeEntries(this.filteredEntries(), false).length)
         ForEach(this.filteredEntries(), (entry: WrongQuestionEntry) => {
           this.wrongCard(entry)
         }, (entry: WrongQuestionEntry): string => `${entry.bankId}#${entry.question.id}`)
@@ -260,7 +249,7 @@ struct WrongBookPage {
   }
 
   @Builder
-  summaryCard() {
+  summaryCard(reviewCount: number) {
     Column({ space: 12 }) {
       Row({ space: 10 }) {
         Column({ space: 5 }) {
@@ -298,44 +287,62 @@ struct WrongBookPage {
       Text('掌握筛选')
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
-      Row({ space: 8 }) {
-        PillButton({ label: '未掌握', primary: this.filter === WRONG_FILTER_NOT_MASTERED, isEnabled: true, grow: true, onTap: (): void => {
+      Flex({ wrap: FlexWrap.Wrap }) {
+        SmallChip({ label: '未掌握', active: this.filter === WRONG_FILTER_NOT_MASTERED, onTap: (): void => {
           this.filter = WRONG_FILTER_NOT_MASTERED;
           this.tick += 1;
         } })
-        PillButton({ label: '已掌握', primary: this.filter === WRONG_FILTER_MASTERED, isEnabled: true, grow: true, onTap: (): void => {
+        SmallChip({ label: '已掌握', active: this.filter === WRONG_FILTER_MASTERED, onTap: (): void => {
           this.filter = WRONG_FILTER_MASTERED;
           this.tick += 1;
         } })
-        PillButton({ label: '全部', primary: this.filter === WRONG_FILTER_ALL, isEnabled: true, grow: true, onTap: (): void => {
+        SmallChip({ label: '全部', active: this.filter === WRONG_FILTER_ALL, onTap: (): void => {
           this.filter = WRONG_FILTER_ALL;
           this.tick += 1;
         } })
       }
       .width('100%')
 
-      Text('排序')
+      Text('题型')
         .fontSize(14)
         .fontWeight(FontWeight.Medium)
-      Row({ space: 8 }) {
-        PillButton({ label: '最近错', primary: this.sort === WRONG_SORT_RECENT, isEnabled: true, grow: true, onTap: (): void => {
+      Flex({ wrap: FlexWrap.Wrap }) {
+        ForEach(WRONG_BOOK_QUESTION_TYPES, (type: string) => {
+          SmallChip({ label: type === '' ? '全部题型' : TYPE_COMPACT_LABELS[type], active: this.questionType === type,
+            onTap: (): void => {
+              this.questionType = type;
+              this.tick += 1;
+            } })
+        }, (type: string): string => `wrong-type-${type}`)
+      }
+      .width('100%')
+
+      Text('复习排序')
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+      Flex({ wrap: FlexWrap.Wrap }) {
+        SmallChip({ label: '最近错', active: this.sort === WRONG_SORT_RECENT, onTap: (): void => {
           this.sort = WRONG_SORT_RECENT;
           this.tick += 1;
         } })
-        PillButton({ label: '错误次数', primary: this.sort === WRONG_SORT_COUNT, isEnabled: true, grow: true, onTap: (): void => {
+        SmallChip({ label: '错误次数', active: this.sort === WRONG_SORT_COUNT, onTap: (): void => {
           this.sort = WRONG_SORT_COUNT;
           this.tick += 1;
         } })
-        PillButton({ label: '掌握程度', primary: this.sort === WRONG_SORT_MASTERY, isEnabled: true, grow: true, onTap: (): void => {
+        SmallChip({ label: '掌握程度', active: this.sort === WRONG_SORT_MASTERY, onTap: (): void => {
           this.sort = WRONG_SORT_MASTERY;
+          this.tick += 1;
+        } })
+        SmallChip({ label: '随机', active: this.sort === WRONG_SORT_RANDOM, onTap: (): void => {
+          this.sort = WRONG_SORT_RANDOM;
           this.tick += 1;
         } })
       }
       .width('100%')
 
       Row({ space: 10 }) {
-        PillButton({ label: this.reviewEntries().length > 0 ? `刷当前筛选（${this.reviewEntries().length} 题）` : '当前筛选无可刷题',
-          primary: true, isEnabled: this.reviewEntries().length > 0, grow: true, onTap: (): void => {
+        PillButton({ label: reviewCount > 0 ? `刷当前筛选（${reviewCount} 题）` : '当前筛选无可刷题',
+          primary: true, isEnabled: reviewCount > 0, grow: true, onTap: (): void => {
             this.startFilteredPractice();
           } })
         PillButton({ label: '返回', primary: false, isEnabled: true, grow: true, onTap: (): void => {
@@ -344,11 +351,12 @@ struct WrongBookPage {
       }
       .width('100%')
 
-      if (this.reviewEntries().length === 0) {
+      if (reviewCount === 0) {
         InfoNotice({ text: this.filter === WRONG_FILTER_MASTERED
           ? '已掌握题不会进入刷错题。需要复习时可先标为未掌握。' : '当前筛选下没有需要复习的错题。' })
       }
     }
+    .alignItems(HorizontalAlign.Start)
     .padding(16)
     .backgroundColor(MisakaColors.CARD)
     .borderRadius(14)

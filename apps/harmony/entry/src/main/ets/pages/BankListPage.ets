@@ -13,7 +13,8 @@ import {
 } from '../ai/AiTypes';
 import { AiBankAnalysisCache } from '../ai/AiBankAnalysisCache';
 import { parseBankAnalysis, AI_BANK_ANALYSIS_MAX_QUESTIONS } from '../ai/AiCodec';
-import { MisakaColors, PillButton, StatusChip, InfoNotice } from './common/QuizWidgets';
+import { appendAiReasoningPreview } from '../ai/AiSse';
+import { MisakaColors, PillButton, StatusChip, InfoNotice, AiReasoningLine } from './common/QuizWidgets';
 
 class BankGroup {
   name: string;
@@ -54,7 +55,7 @@ struct BankListPage {
   @State aiPanels: BankAiPanel[] = [];
   @State aiQueueRunning: boolean = false;
   @State aiStreamBankId: string = '';
-  @State aiStreamText: string = '';
+  @State aiReasoningPreview: string = '';
   @State aiErrorText: string = '';
 
   private context(): common.UIAbilityContext {
@@ -79,6 +80,10 @@ struct BankListPage {
   }
 
   private openAiSheet(): void {
+    if (this.aiQueueRunning) {
+      this.showAiSheet = true;
+      return;
+    }
     const selected: Record<string, boolean> = {};
     for (const bank of this.repo.banks) {
       selected[bank.id] = true;
@@ -98,7 +103,7 @@ struct BankListPage {
     this.aiPanels = panels;
     this.aiQueueRunning = false;
     this.aiStreamBankId = '';
-    this.aiStreamText = '';
+    this.aiReasoningPreview = '';
     this.aiErrorText = '';
     this.showAiSheet = true;
     this.tick += 1;
@@ -169,7 +174,7 @@ struct BankListPage {
     if (index >= this.aiPanels.length) {
       this.aiQueueRunning = false;
       this.aiStreamBankId = '';
-      this.aiStreamText = '';
+      this.aiReasoningPreview = '';
       this.rebuildPanels();
       return;
     }
@@ -187,16 +192,14 @@ struct BankListPage {
     panel.error = '';
     panel.sentCount = Math.min(bank.questions.length, AI_BANK_ANALYSIS_MAX_QUESTIONS);
     this.aiStreamBankId = panel.bankId;
-    this.aiStreamText = '';
+    this.aiReasoningPreview = '';
     this.rebuildPanels();
     const settings = this.repo.settings;
     MisakaAiClient.analyzeBankStreaming(settings.aiApiBaseUrl, settings.aiApiKey, settings.aiModelName,
       bank.questions, bank.name,
       new AiStreamCallback((chunk: string): void => {
-        this.aiStreamText += chunk;
-      }, (cumulative: string): void => {
-        this.aiStreamText = cumulative;
-      }, (_full: string): void => {}), 120)
+        this.aiReasoningPreview = appendAiReasoningPreview(this.aiReasoningPreview, chunk);
+      }, (): void => {}, (): void => {}), 120)
       .then((full: string): void => {
         const cached = AiBankAnalysisCache.saveBankAnalysis(this.context(), panel.bankId, full);
         panel.result = cached !== null ? cached : parseBankAnalysis(full);
@@ -572,23 +575,10 @@ struct BankListPage {
       .width('100%')
 
       if (panel.status === 'analyzing') {
-        if (this.aiStreamBankId === panel.bankId && this.aiStreamText.length > 0) {
-          Text(`…${this.aiStreamText.substring(Math.max(0, this.aiStreamText.length - 400))}`)
-            .fontSize(11)
-            .fontColor(MisakaColors.TEXT_SUB)
-            .backgroundColor(MisakaColors.MUTED)
-            .borderRadius(8)
-            .padding(8)
-            .maxLines(6)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .width('100%')
-        } else {
-          Text(panel.sentCount > 0
-            ? `AI 分析中…（送审 ${panel.sentCount} 题，大题库可能需要一两分钟）`
-            : 'AI 分析中…')
-            .fontSize(12)
-            .fontColor(MisakaColors.TEXT_SUB)
-        }
+        AiReasoningLine({
+          reasoning: this.aiStreamBankId === panel.bankId ? this.aiReasoningPreview : '',
+          waitingText: `AI 正在分析 ${panel.sentCount} 题…`
+        })
       }
       if (panel.status === 'error') {
         InfoNotice({ text: `AI 分析失败：${panel.error}`, warning: true })

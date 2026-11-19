@@ -133,8 +133,12 @@ export function formatAiHttpError(code: number, responseText: string): string {
 
 // ---------- 请求体构建 ----------
 
+export function normalizeThinkingLevel(value: string): string {
+  return ['none', 'low', 'high', 'max'].includes(value) ? value : 'default';
+}
+
 export function buildChatRequestBody(modelName: string, systemPrompt: string, userPayload: string,
-  maxTokens: number | null, stream: boolean): string {
+  maxTokens: number | null, stream: boolean, thinkingLevel: string = 'default'): string {
   const messages: Object[] = [];
   const systemMsg: Record<string, Object> = {};
   systemMsg['role'] = 'system';
@@ -146,7 +150,14 @@ export function buildChatRequestBody(modelName: string, systemPrompt: string, us
   messages.push(userMsg);
   const body: Record<string, Object> = {};
   body['model'] = modelName.trim();
-  body['temperature'] = 0.1;
+  const level = normalizeThinkingLevel(thinkingLevel);
+  if (level === 'default' || level === 'none') {
+    body['temperature'] = 0.1;
+  }
+  if (level !== 'default') {
+    body['thinking'] = { 'type': level === 'none' ? 'disabled' : 'enabled' } as Record<string, Object>;
+    body['reasoning_effort'] = level;
+  }
   if (stream) {
     body['stream'] = true;
   }

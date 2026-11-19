@@ -15,6 +15,7 @@ export const WRONG_BOOK_SCOPE_BANK = 'bank';
 export const WRONG_SORT_RECENT = 'recent_wrong';
 export const WRONG_SORT_COUNT = 'wrong_count';
 export const WRONG_SORT_MASTERY = 'mastery';
+export const WRONG_SORT_RANDOM = 'random';
 
 export const WRONG_FILTER_NOT_MASTERED = 'not_mastered';
 export const WRONG_FILTER_MASTERED = 'mastered';
@@ -226,7 +227,21 @@ export function sortTodaySmartReviewEntries(entries: WrongQuestionEntry[]): Wron
   return sorted;
 }
 
-/** 列表排序：最近错 / 错误次数 / 掌握程度。 */
+export function filterWrongEntries(entries: WrongQuestionEntry[], statusFilter: string,
+  questionType: string): WrongQuestionEntry[] {
+  return entries.filter((entry): boolean => {
+    if (questionType !== '' && entry.question.type !== questionType) {
+      return false;
+    }
+    const mastered = entry.status === WrongStatus.MASTERED;
+    if (statusFilter === WRONG_FILTER_NOT_MASTERED) {
+      return !mastered;
+    }
+    return statusFilter !== WRONG_FILTER_MASTERED || mastered;
+  });
+}
+
+/** 列表排序。随机模式的列表仍按最近错排序，开始练习时才洗牌。 */
 export function sortWrongEntries(entries: WrongQuestionEntry[], sort: string): WrongQuestionEntry[] {
   const sorted = entries.slice();
   if (sort === WRONG_SORT_COUNT) {

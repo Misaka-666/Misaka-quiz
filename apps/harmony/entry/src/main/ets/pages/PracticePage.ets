@@ -1,3 +1,4 @@
+import { PracticeContinuation } from '../state/PracticeContinuation';
 /**
  * M4 练习页 — 会话态全屏页（自 Index「练习」tab 开始后 push 进入）。
  * 行为对齐 Android PracticeScreen：即时反馈/批量做题/背题/斩题/收藏/快速编辑/
@@ -10,12 +11,13 @@ import { Question, QuestionType, Option, QuestionImage } from '../domain/Models'
 import { hasStructuredAnswers } from '../importer/model/MultiBlankSupport';
 import { PracticeSessionCore, PRACTICE_MODE_BATCH, PRACTICE_MODE_INSTANT } from '../state/PracticeSessionCore';
 import { parseQuickEditAnswer } from '../state/AnswerJudge';
-import { practiceDisplayOptions, PracticeDisplayOption } from '../state/OptionShuffle';
+import { practiceDisplayOptions, PracticeDisplayOption, practiceAnswersForDisplay } from '../state/OptionShuffle';
 import { MisakaAiClient } from '../ai/MisakaAiClient';
 import { AiSingleQuestionAnalysis, AiStreamCallback } from '../ai/AiTypes';
 import { aiDisplayQuestionWithAnswer, aiConfidenceLabel } from '../ai/AiSuggestions';
+import { appendAiReasoningPreview } from '../ai/AiSse';
 import {
-  MisakaColors, TypeBadge, PillButton, ChoiceCard, AnswerResultBlock, InfoNotice, StatusChip
+  MisakaColors, TypeBadge, PillButton, ChoiceCard, AnswerResultBlock, InfoNotice, StatusChip, AiReasoningLine
 } from './common/QuizWidgets';
 
 @Entry
@@ -23,6 +25,7 @@ import {
 struct PracticePage {
   private repo: QuizRepository = QuizRepository.getInstance();
   private session: PracticeSessionCore = QuizRepository.getInstance().practice;
+  @StorageLink('continuationBusy') continuationBusy: boolean = false;
   @State tick: number = 0;
   @State textAnswer: string = '';
   @State blankAnswers: string[] = [];
@@ -39,6 +42,7 @@ struct PracticePage {
   @State aiQuestionAnalysis: AiSingleQuestionAnalysis | null = null;
   @State aiQuestionError: string = '';
   @State aiQuestionLoading: boolean = false;
+  @State aiQuestionReasoning: string = '';
   @State freeAskExpanded: boolean = false;
   @State freeAskInput: string = '';
   @State freeAskResponse: string = '';
@@ -46,6 +50,7 @@ struct PracticePage {
   @State freeAskLoading: boolean = false;
   @State freeAskStream: string = '';
   private aiStateKey: string = '';
+  private aiRequestGeneration: number = 0;
   private autoNextTimer: number = -1;
   // 阔折叠双栏断点监听（对齐 Index wideListener 模式）：答题中折叠/展开需实时切换单双栏，
   // aboutToAppear 一次性读 display 宽度会在折叠切换后留下陈旧布局（题列被挤成一条）。
@@ -59,9 +64,11 @@ struct PracticePage {
   private resetAiIfQuestionChanged(): void {
     if (this.aiStateKey !== this.sessionKey()) {
       this.aiStateKey = this.sessionKey();
+      this.aiRequestGeneration += 1;
       this.aiQuestionAnalysis = null;
       this.aiQuestionError = '';
       this.aiQuestionLoading = false;
+      this.aiQuestionReasoning = '';
       this.freeAskExpanded = false;
       this.freeAskInput = '';
       this.freeAskResponse = '';
@@ -79,7 +86,6 @@ struct PracticePage {
     if (!this.repo.isAiConfigured()) {
       this.aiQuestionError = '请先在 我的 → AI 设置 中填写 API 地址、API Key 和模型名称。';
       this.aiQuestionAnalysis = null;
-      this.bump();
       return;
     }
     if (this.aiQuestionLoading) {
@@ -91,23 +97,30 @@ struct PracticePage {
     }
     this.aiQuestionLoading = true;
     this.aiQuestionError = '';
-    this.bump();
+    this.aiQuestionReasoning = '';
     const userAnswer = this.session.lastResult !== null
       ? this.session.lastResult.userAnswer.slice() : this.session.selectedAnswer.slice();
+    const requestKey = this.sessionKey();
+    const requestGeneration = this.aiRequestGeneration;
     const view = aiDisplayQuestionWithAnswer(question, this.currentDisplayOptions(), userAnswer);
     MisakaAiClient.analyzeSingleQuestion(this.repo.settings.aiApiBaseUrl, this.repo.settings.aiApiKey,
-      this.repo.settings.aiModelName, view.question, view.userAnswer, this.repo.settings.aiTimeoutSeconds)
+      this.repo.settings.aiModelName, view.question, view.userAnswer, (chunk: string): void => {
+        if (requestKey !== this.sessionKey() || requestGeneration !== this.aiRequestGeneration) { return; }
+        this.aiQuestionReasoning = appendAiReasoningPreview(this.aiQuestionReasoning, chunk);
+      }, this.repo.settings.aiTimeoutSeconds)
       .then((analysis: AiSingleQuestionAnalysis): void => {
+        if (requestKey !== this.sessionKey() || requestGeneration !== this.aiRequestGeneration) { return; }
         this.aiQuestionAnalysis = analysis;
         this.aiQuestionError = '';
         this.aiQuestionLoading = false;
-        this.bump();
+        this.aiQuestionReasoning = '';
       })
       .catch((err: Error): void => {
+        if (requestKey !== this.sessionKey() || requestGeneration !== this.aiRequestGeneration) { return; }
         this.aiQuestionAnalysis = null;
         this.aiQuestionError = err.message.length > 0 ? err.message : 'AI 分析失败，请检查接口配置或网络。';
         this.aiQuestionLoading = false;
-        this.bump();
+        this.aiQuestionReasoning = '';
       });
   }
 
@@ -115,12 +128,10 @@ struct PracticePage {
     const text = this.freeAskInput.trim();
     if (!this.repo.isAiConfigured()) {
       this.freeAskError = '请先在 我的 → AI 设置 中配置 AI 接口。';
-      this.bump();
       return;
     }
     if (text.length === 0) {
       this.freeAskError = '请输入问题。';
-      this.bump();
       return;
     }
     if (this.freeAskLoading) {
@@ -135,27 +146,29 @@ struct PracticePage {
     this.freeAskResponse = '';
     this.freeAskStream = '';
     this.freeAskInput = '';
-    this.bump();
+    const requestKey = this.sessionKey();
+    const requestGeneration = this.aiRequestGeneration;
     const view = aiDisplayQuestionWithAnswer(question, this.currentDisplayOptions(), []);
     MisakaAiClient.freeAskStreaming(this.repo.settings.aiApiBaseUrl, this.repo.settings.aiApiKey,
       this.repo.settings.aiModelName, view.question, text,
       new AiStreamCallback((): void => {
       }, (cumulative: string): void => {
+        if (requestKey !== this.sessionKey() || requestGeneration !== this.aiRequestGeneration) { return; }
         this.freeAskStream = cumulative;
       }, (_full: string): void => {
       }), this.repo.settings.aiTimeoutSeconds)
       .then((full: string): void => {
+        if (requestKey !== this.sessionKey() || requestGeneration !== this.aiRequestGeneration) { return; }
         this.freeAskStream = full;
         this.freeAskResponse = full.trim().length > 0 ? full.trim() : 'AI 未返回有效回答。';
         this.freeAskLoading = false;
-        this.bump();
-      })
+        })
       .catch((err: Error): void => {
+        if (requestKey !== this.sessionKey() || requestGeneration !== this.aiRequestGeneration) { return; }
         this.freeAskResponse = '';
         this.freeAskError = err.message.length > 0 ? err.message : '提问失败，请检查接口配置或网络。';
         this.freeAskLoading = false;
-        this.bump();
-      });
+        });
   }
 
   private sessionKey(): string {
@@ -179,7 +192,7 @@ struct PracticePage {
     if (question === null) {
       return [];
     }
-    const options = practiceDisplayOptions(question, this.repo.settings.practiceOptionShuffleEnabled,
+    const options = practiceDisplayOptions(question, (this.session.shuffleEnabled ?? this.repo.settings.practiceOptionShuffleEnabled),
       this.session.optionShuffleSeed, this.sessionKey());
     if (options.length === 0 && question.type === QuestionType.JUDGE) {
       return [new PracticeDisplayOption('A', 'A', '正确'), new PracticeDisplayOption('B', 'B', '错误')];
@@ -219,7 +232,7 @@ struct PracticePage {
   }
 
   private isRecite(): boolean {
-    return this.repo.settings.practiceReciteModeEnabled;
+    return this.session.reciteMode ?? this.repo.settings.practiceReciteModeEnabled;
   }
 
   private goNext(): void {
@@ -244,13 +257,23 @@ struct PracticePage {
     this.bump();
   }
 
-  private submitCurrent(): void {
+  private submitCurrent(allowAutoNext: boolean = true): void {
+    if (this.autoNextTimer >= 0) {
+      clearTimeout(this.autoNextTimer);
+      this.autoNextTimer = -1;
+    }
+    if (this.isSubmittedNow()) {
+      return;
+    }
     const result = this.session.submitQuestion();
     this.bump();
-    if (result !== null && result.correct && this.repo.settings.practiceAutoNextEnabled) {
+    if (allowAutoNext && result !== null && result.correct && this.repo.settings.practiceAutoNextEnabled) {
+      const submittedKey = this.session.currentSessionKey();
       this.autoNextTimer = setTimeout((): void => {
         this.autoNextTimer = -1;
-        this.goNext();
+        if (this.session.currentSessionKey() === submittedKey) {
+          this.goNext();
+        }
       }, 500);
     }
   }
@@ -295,53 +318,34 @@ struct PracticePage {
   }
 
   private tryExit(): void {
-    const ui = this.getUIContext();
-    if (this.unsubmittedCount() > 0 && this.session.mode === PRACTICE_MODE_INSTANT) {
-      ui.showAlertDialog({
-        message: `还有 ${this.unsubmittedCount()} 题未提交。补答未提交的题按未作答计分并计入错题。`,
-        primaryButton: {
-          value: '补答并结束',
-          action: (): void => {
-            this.completePractice(true);
-          }
-        },
-        secondaryButton: {
-          value: '直接结束',
-          action: (): void => {
-            this.finishAndBack(false);
-          }
-        }
-      });
-      return;
-    }
-    if (this.session.canSaveSequentialProgressOnExit(this.repo.settings.practiceReciteModeEnabled)) {
-      ui.showAlertDialog({
-        message: '是否保存顺序练习进度？下次可从当前位置继续。',
-        primaryButton: {
-          value: '保存退出',
-          action: (): void => {
-            this.finishAndBack(true);
-          }
-        },
-        secondaryButton: {
-          value: '不保存退出',
-          action: (): void => {
-            this.finishAndBack(false);
-          }
-        }
-      });
-      return;
-    }
-    this.finishAndBack(false);
+    if (this.repo.persist()) { router.back(); }
   }
 
-  private finishAndBack(saveSequential: boolean): void {
-    if (saveSequential) {
-      this.session.endSessionSavingSequentialProgress(this.repo.settings.practiceReciteModeEnabled);
-    } else {
-      this.session.endSession();
+  onBackPress(): boolean {
+    if (this.continuationBusy) { return true; }
+    this.tryExit();
+    return true;
+  }
+
+  onPageShow(): void {
+    PracticeContinuation.get()?.setAvailable(!this.completed && this.session.questions.length > 0 && !this.continuationBusy);
+  }
+
+  onPageHide(): void {
+    PracticeContinuation.get()?.setAvailable(false);
+    this.repo.persist();
+  }
+
+  private finishPractice(): void {
+    if (this.unsubmittedCount() === 0 || this.isRecite()) {
+      this.completePractice(false);
+      return;
     }
-    router.back();
+    this.getUIContext().showAlertDialog({
+      message: '结束本次练习？未提交的题不会计分。',
+      primaryButton: { value: '结束练习', action: (): void => { this.completePractice(false); } },
+      secondaryButton: { value: '继续答题', action: (): void => {} }
+    });
   }
 
   private completePractice(submitBlanksFirst: boolean): void {
@@ -358,6 +362,7 @@ struct PracticePage {
     this.completedCorrect = correct;
     this.session.completeSession();
     this.completed = true;
+    PracticeContinuation.get()?.setAvailable(false);
     this.bump();
   }
 
@@ -447,6 +452,21 @@ struct PracticePage {
     return question.answer.join(' / ').length > 0 ? question.answer.join(' / ') : '（无参考答案）';
   }
 
+  private resultAnswerText(question: Question, displayOptions: PracticeDisplayOption[]): string {
+    if (question.type === QuestionType.SINGLE || question.type === QuestionType.MULTIPLE) {
+      const answer = practiceAnswersForDisplay(question.answer, displayOptions).join(' / ');
+      return answer.length > 0 ? answer : '（无参考答案）';
+    }
+    return this.session.lastResult !== null ? this.session.lastResult.answerText : this.reciteAnswerText(question);
+  }
+
+  private resultUserAnswerText(question: Question, displayOptions: PracticeDisplayOption[]): string {
+    const answers = this.session.lastResult !== null ? this.session.lastResult.userAnswer : [];
+    const displayed = question.type === QuestionType.SINGLE || question.type === QuestionType.MULTIPLE
+      ? practiceAnswersForDisplay(answers, displayOptions) : answers;
+    return displayed.length > 0 ? `你的答案：${displayed.join('、')}` : '未作答';
+  }
+
   private nextButtonLabel(): string {
     const maxIndex = this.session.mode === PRACTICE_MODE_BATCH ? this.session.batchEndIndex() : this.session.questions.length - 1;
     return this.session.index >= maxIndex ? '已是最后一题' : '下一题';
@@ -462,6 +482,17 @@ struct PracticePage {
       router.back();
       return;
     }
+    if (!this.repo.preparePracticeView()) { router.back(); return; }
+    this.repo.beforeContinuation = (): void => {
+      this.showQuickEdit = false;
+      this.showSheet = false;
+      this.aiRequestGeneration += 1;
+      this.aiQuestionLoading = false;
+      this.aiQuestionReasoning = '';
+      this.freeAskLoading = false;
+      if (this.autoNextTimer >= 0) { clearTimeout(this.autoNextTimer); this.autoNextTimer = -1; }
+    };
+    this.aiStateKey = this.sessionKey();
     this.syncTextMirrors();
     this.wideListener = mediaquery.matchMediaSync('(min-width: 540vp)');
     this.isWide = this.wideListener.matches;
@@ -472,6 +503,8 @@ struct PracticePage {
   }
 
   aboutToDisappear(): void {
+    this.repo.beforeContinuation = (): void => {};
+    this.aiRequestGeneration += 1;
     if (this.autoNextTimer >= 0) {
       clearTimeout(this.autoNextTimer);
       this.autoNextTimer = -1;
@@ -484,17 +517,17 @@ struct PracticePage {
 
   build() {
     Column() {
+      if (this.continuationBusy) { Text('正在接续练习').fontSize(14).fontColor(MisakaColors.TEXT) }
       Column() {
         if (this.completed) {
           this.completedView();
-        } else if (this.tick % 2 === 0) {
-          this.liveBody();
         } else {
           this.liveBody();
         }
       }
       .width('100%')
       .height('100%')
+    .enabled(!this.continuationBusy)
       // ponytail: 同一节点链两个 bindSheet 时第一个打不开（同 BankListPage 回归），拆到内层节点挂
       .bindSheet($$this.showSheet, this.sheetBuilder(), {
         height: SheetSize.MEDIUM,
@@ -506,6 +539,7 @@ struct PracticePage {
     }
     .width('100%')
     .height('100%')
+    .enabled(!this.continuationBusy)
     .backgroundColor(MisakaColors.BG)
     .bindSheet($$this.showQuickEdit, this.quickEditBuilder(), {
       height: SheetSize.LARGE,
@@ -513,8 +547,6 @@ struct PracticePage {
     })
   }
 
-  // tick 奇偶翻转强制重建子树：会话核心是纯 .ts 数据对象，ArkUI 不对其方法读取做依赖收集，
-  // 只有真正引用 @State tick 的表达式会更新。升级路径：会话核心 @ObservedV2/@Trace 化（需解 Node 双端编译）。
   @Builder
   liveBody() {
     Row({ space: 12 }) {
@@ -526,21 +558,29 @@ struct PracticePage {
         })
       Column({ space: 2 }) {
         Row({ space: 8 }) {
-          Text(`${this.session.index + 1} / ${this.session.questions.length}`)
+          Text(this.tick >= 0 ? `${this.session.index + 1} / ${this.session.questions.length}` : '')
             .fontSize(16)
             .fontWeight(FontWeight.Medium)
-          if (this.session.mode === PRACTICE_MODE_BATCH) {
-            Text(`第 ${this.session.batchGroupNumber()}/${this.session.batchGroupCount()} 组`)
+          if (this.tick >= 0 && this.session.mode === PRACTICE_MODE_BATCH) {
+            Text(this.tick >= 0 ? `第 ${this.session.batchGroupNumber()}/${this.session.batchGroupCount()} 组` : '')
               .fontSize(13)
               .fontColor(MisakaColors.TEXT_SUB)
           }
         }
-        Progress({ value: this.session.index + 1, total: Math.max(1, this.session.questions.length), type: ProgressType.Linear })
+        Progress({
+          value: this.tick >= 0 ? this.session.index + 1 : 0,
+          total: this.tick >= 0 ? Math.max(1, this.session.questions.length) : 1,
+          type: ProgressType.Linear
+        })
           .color(MisakaColors.PRIMARY)
           .height(4)
       }
       .layoutWeight(1)
-      Text(`正确 ${this.session.autoScoredCorrectCount()}`)
+      Text('结束练习')
+        .fontSize(14)
+        .fontColor(MisakaColors.PRIMARY)
+        .onClick((): void => { this.finishPractice(); })
+      Text(this.tick >= 0 ? `正确 ${this.session.autoScoredCorrectCount()}` : '')
         .fontSize(13)
         .fontColor(MisakaColors.GREEN)
       if (!this.isWide) {
@@ -563,21 +603,21 @@ struct PracticePage {
               .fontSize(14)
               .fontWeight(FontWeight.Medium)
             this.sheetGrid()
-            Text(`已答 ${this.session.answeredCount()} · 正确 ${this.session.autoScoredCorrectCount()}`)
+            Text(this.tick >= 0 ? `已答 ${this.session.answeredCount()} · 正确 ${this.session.autoScoredCorrectCount()}` : '')
               .fontSize(12)
               .fontColor(MisakaColors.TEXT_SUB)
           }
           .width('100%')
           .padding(12)
         }
+        .scrollBar(BarState.Off)
         .width(300)
         .height('100%')
         .backgroundColor(MisakaColors.BG)
         Divider()
           .vertical(true)
         Column() {
-          this.questionPane()
-          this.bottomActions()
+          this.liveQuestionBody()
         }
         .layoutWeight(1)
         .height('100%')
@@ -585,10 +625,21 @@ struct PracticePage {
       .layoutWeight(1)
     } else {
       Column() {
-        this.questionPane()
-        this.bottomActions()
+        this.liveQuestionBody()
       }
       .layoutWeight(1)
+    }
+  }
+
+  // ponytail: 纯 TS 会话靠 tick 刷新。仅重建题目和操作区，保留答题卡的滚动容器。
+  @Builder
+  liveQuestionBody() {
+    if (this.tick % 2 === 0) {
+      this.questionPane()
+      this.bottomActions()
+    } else {
+      this.questionPane()
+      this.bottomActions()
     }
   }
 
@@ -635,7 +686,7 @@ struct PracticePage {
       Scroll() {
         Column({ space: 12 }) {
           this.questionHeader();
-          this.questionContent();
+          this.questionContent(this.currentDisplayOptions());
         }
         .alignItems(HorizontalAlign.Start)
         .width('100%')
@@ -672,8 +723,9 @@ struct PracticePage {
         .fontColor(MisakaColors.TEXT_SUB)
       Blank()
       Text(this.session.isCurrentFavorited() ? '★ 已收藏' : '☆ 收藏')
-        .fontSize(13)
+        .fontSize(15)
         .fontColor(this.session.isCurrentFavorited() ? MisakaColors.AMBER : MisakaColors.TEXT_SUB)
+        .padding(6)
         .onClick((): void => {
           this.session.toggleCurrentFavorite();
           this.bump();
@@ -714,14 +766,14 @@ struct PracticePage {
   }
 
   @Builder
-  questionContent() {
+  questionContent(displayOptions: PracticeDisplayOption[]) {
     if (this.session.questions.length > 0) {
       ForEach(this.session.questions, (question: Question, index: number) => {
         if (index === this.session.index) {
           Column({ space: 14 }) {
             this.stemBlock(question);
-            this.answerArea(question);
-            this.resultBlock(question);
+            this.answerArea(question, displayOptions);
+            this.resultBlock(question, displayOptions);
             this.aiPanel(question);
           }
           .width('100%')
@@ -748,7 +800,7 @@ struct PracticePage {
         }
         .width('100%')
         if (this.aiQuestionLoading) {
-          InfoNotice({ text: 'AI 正在分析当前题目，请稍候。', warning: false })
+          AiReasoningLine({ reasoning: this.aiQuestionReasoning, waitingText: 'AI 正在分析当前题目…' })
         }
         if (this.aiQuestionError.length > 0) {
           InfoNotice({ text: `AI 分析失败：${this.aiQuestionError}`, warning: true })
@@ -897,11 +949,11 @@ struct PracticePage {
   }
 
   @Builder
-  answerArea(question: Question) {
+  answerArea(question: Question, displayOptions: PracticeDisplayOption[]) {
     Column({ space: 10 }) {
       if (question.type === QuestionType.SINGLE || question.type === QuestionType.MULTIPLE ||
         question.type === QuestionType.JUDGE) {
-        this.choiceOptions(question);
+        this.choiceOptions(question, displayOptions);
       } else if (this.isRecite()) {
         InfoNotice({ text: '背题模式下直接查看参考答案和解析。', warning: false })
       } else if (question.type === QuestionType.BLANK && hasStructuredAnswers(question)) {
@@ -949,9 +1001,9 @@ struct PracticePage {
   }
 
   @Builder
-  choiceOptions(question: Question) {
+  choiceOptions(question: Question, displayOptions: PracticeDisplayOption[]) {
     Column({ space: this.repo.settings.compactOptionsEnabled ? 8 : 10 }) {
-      ForEach(this.currentDisplayOptions(), (option: PracticeDisplayOption) => {
+      ForEach(displayOptions, (option: PracticeDisplayOption) => {
         ChoiceCard({
           label: option.displayKey,
           text: option.text,
@@ -969,21 +1021,21 @@ struct PracticePage {
   }
 
   @Builder
-  resultBlock(question: Question) {
+  resultBlock(question: Question, displayOptions: PracticeDisplayOption[]) {
     if (this.isRecite()) {
-      AnswerResultBlock({ correct: true, title: '参考答案', body: this.reciteAnswerText(question) })
+      AnswerResultBlock({ showVerdict: false, title: '参考答案', body: this.resultAnswerText(question, displayOptions) })
       if (question.analysis.length > 0) {
-        AnswerResultBlock({ correct: true, title: '解析', body: question.analysis })
+        AnswerResultBlock({ showVerdict: false, title: '解析', body: question.analysis })
       }
     } else if (this.session.lastResult !== null && !(this.session.mode === PRACTICE_MODE_BATCH && !this.session.batchSubmitted)) {
       AnswerResultBlock({
         correct: this.session.lastResult.correct,
-        title: `正确答案：${this.session.lastResult.answerText}`,
-        body: this.session.lastResult.userAnswer.length > 0
-          ? `你的答案：${this.session.lastResult.userAnswer.join('、')}` : '未作答'
+        showVerdict: this.session.lastResult.autoScored,
+        title: `正确答案：${this.resultAnswerText(question, displayOptions)}`,
+        body: this.resultUserAnswerText(question, displayOptions)
       })
       if (question.analysis.length > 0) {
-        AnswerResultBlock({ correct: true, title: '解析', body: question.analysis })
+        AnswerResultBlock({ showVerdict: false, title: '解析', body: question.analysis })
       }
     }
   }
@@ -991,19 +1043,20 @@ struct PracticePage {
   @Builder
   sheetGrid() {
     Grid() {
-      ForEach(this.session.questions, (_question: Question, index: number) => {
+      ForEach(this.tick >= 0 ? this.session.questions : [], (_question: Question, index: number) => {
         GridItem() {
           Text(`${index + 1}`)
             .fontSize(15)
-            .fontColor(this.sheetGridColor(index))
-            .backgroundColor(this.sheetGridBg(index))
+            .fontColor(this.tick >= 0 ? this.sheetGridColor(index) : MisakaColors.TEXT)
+            .backgroundColor(this.tick >= 0 ? this.sheetGridBg(index) : MisakaColors.CARD)
             .borderRadius(10)
-            .width(40)
+            .width('100%')
+            .constraintSize({ maxWidth: 40 })
             .height(40)
             .textAlign(TextAlign.Center)
             .border({
-              width: index === this.session.index ? 2 : 1,
-              color: index === this.session.index ? MisakaColors.PRIMARY : MisakaColors.BORDER
+              width: this.tick >= 0 && index === this.session.index ? 2 : 1,
+              color: this.tick >= 0 && index === this.session.index ? MisakaColors.PRIMARY : MisakaColors.BORDER
             })
             .onClick((): void => {
               this.session.goToQuestion(index);
@@ -1018,6 +1071,7 @@ struct PracticePage {
     .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr')
     .columnsGap(8)
     .rowsGap(8)
+    .scrollBar(this.isWide ? BarState.Off : BarState.Auto)
     .width('100%')
   }
 
@@ -1041,9 +1095,9 @@ struct PracticePage {
         // 批量复盘时 submitBatch 已给全组（含未答）判分，两个按钮必然双双禁用，整行隐藏
         Row({ space: 10 }) {
           PillButton({
-            label: '查看解析', primary: false, isEnabled: !this.isSubmittedNow(),
+            label: '查看解析', primary: false, isEnabled: true,
             onTap: (): void => {
-              this.submitCurrent();
+              this.submitCurrent(false);
             }, grow: true })
           PillButton({
             label: this.isSubmittedNow() ? '已提交' : '提交答案',

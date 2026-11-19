@@ -11,7 +11,7 @@ import { MisakaColors, PillButton, SmallChip, SettingToggleRow } from './common/
 import {
   KEY_DARK_THEME_ENABLED, KEY_TABLET_SIDE_NAVIGATION_ENABLED, KEY_MISAKA_MODE_ENABLED,
   KEY_STARTUP_SPLASH_ENABLED, KEY_QUESTION_FONT_SIZE_MODE, KEY_OPTION_FONT_SIZE_MODE,
-  KEY_COMPACT_OPTIONS_ENABLED, applyAppColorMode
+  KEY_COMPACT_OPTIONS_ENABLED, applyAppColorMode, applyAppWindowColors
 } from '../state/AppSettings';
 
 @Entry
@@ -36,6 +36,7 @@ struct AppearancePage {
     s.darkThemeEnabled = dark;
     s.putBool(KEY_DARK_THEME_ENABLED, dark);
     applyAppColorMode(this.context(), dark);
+    void applyAppWindowColors(this.context(), dark);
     this.bump();
   }
 

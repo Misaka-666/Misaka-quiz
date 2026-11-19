@@ -8,10 +8,11 @@ const { Question, QuestionType, Option, QuizBank, WrongQuestionEntry, WrongStatu
 const { searchQuestions, resolveSearchScope, SEARCH_SCOPE_ACTIVE, SEARCH_SCOPE_ALL } =
   await import(new URL(`${base}/state/QuestionSearch.ts`, import.meta.url));
 const {
-  filterWrongEntriesByScope, wrongBookScopeLabel, isWrongEntryDueForSmartReview,
+  filterWrongEntriesByScope, filterWrongEntries, wrongBookScopeLabel, isWrongEntryDueForSmartReview,
   sortTodaySmartReviewEntries, sortWrongEntries, applyManualMastered,
   WRONG_BOOK_SCOPE_CURRENT_BANK, WRONG_BOOK_SCOPE_ALL_BANKS, WRONG_BOOK_SCOPE_GROUP, WRONG_BOOK_SCOPE_BANK,
-  WRONG_SORT_RECENT, WRONG_SORT_COUNT, WRONG_SORT_MASTERY
+  WRONG_FILTER_ALL, WRONG_FILTER_MASTERED, WRONG_FILTER_NOT_MASTERED,
+  WRONG_SORT_RECENT, WRONG_SORT_COUNT, WRONG_SORT_MASTERY, WRONG_SORT_RANDOM
 } = await import(new URL(`${base}/state/WrongBookOps.ts`, import.meta.url));
 
 // ---------- 造题 ----------
@@ -106,6 +107,29 @@ assert.equal(wrongBookScopeLabel(banks, 'C1 题库', WRONG_BOOK_SCOPE_GROUP, '',
 assert.equal(wrongBookScopeLabel(banks, 'C1 题库', WRONG_BOOK_SCOPE_BANK, '', 'b2'), 'C2 题库');
 assert.equal(wrongBookScopeLabel(banks, 'C1 题库', WRONG_BOOK_SCOPE_BANK, '', 'gone'), '题库');
 
+// ---------- 题型与范围、掌握状态叠加 ----------
+const typedEntries = [
+  [QuestionType.SINGLE, 'b1', WrongStatus.NOT_MASTERED],
+  [QuestionType.MULTIPLE, 'b1', WrongStatus.REVIEWING],
+  [QuestionType.MULTIPLE, 'b2', WrongStatus.NOT_MASTERED],
+  [QuestionType.MULTIPLE, 'b1', WrongStatus.MASTERED],
+  [QuestionType.JUDGE, 'b1', WrongStatus.NOT_MASTERED],
+  [QuestionType.BLANK, 'b1', WrongStatus.NOT_MASTERED],
+  [QuestionType.SHORT, 'b2', WrongStatus.NOT_MASTERED]
+].map(([type, bankId, status], i) => {
+  const entry = wrong(bankId, `type-${i}`, status);
+  entry.question.type = type;
+  return entry;
+});
+const scoped = filterWrongEntriesByScope(typedEntries, banks, 'b1', WRONG_BOOK_SCOPE_CURRENT_BANK, '', '');
+assert.deepEqual(filterWrongEntries(scoped, WRONG_FILTER_NOT_MASTERED, QuestionType.SINGLE), [typedEntries[0]]);
+assert.deepEqual(filterWrongEntries(scoped, WRONG_FILTER_NOT_MASTERED, QuestionType.MULTIPLE), [typedEntries[1]]);
+assert.deepEqual(filterWrongEntries(scoped, WRONG_FILTER_MASTERED, QuestionType.MULTIPLE), [typedEntries[3]]);
+assert.deepEqual(filterWrongEntries(scoped, WRONG_FILTER_ALL, QuestionType.MULTIPLE), [typedEntries[1], typedEntries[3]]);
+assert.deepEqual(filterWrongEntries(scoped, WRONG_FILTER_ALL, QuestionType.JUDGE), [typedEntries[4]]);
+assert.deepEqual(filterWrongEntries(scoped, WRONG_FILTER_MASTERED, QuestionType.JUDGE), []);
+assert.deepEqual(filterWrongEntries(typedEntries, WRONG_FILTER_ALL, ''), typedEntries, '全部题型保留填空和简答');
+
 // ---------- 到期判定（注入固定时间） ----------
 const NOW = new Date(2026, 8, 18, 12, 0, 0).getTime(); // 2026-09-18 正午
 const dayMs = 24 * 60 * 60 * 1000;
@@ -140,6 +164,7 @@ assert.deepEqual(sortWrongEntries([r1, r2, r3], WRONG_SORT_RECENT).map((e) => e.
 assert.deepEqual(sortWrongEntries([r1, r2, r3], WRONG_SORT_COUNT).map((e) => e.wrongCount), [3, 2, 1], '错误次数降序（已掌握 2 次在 1 前）');
 assert.equal(sortWrongEntries([r1, r2, r3], WRONG_SORT_MASTERY)[2].status, WrongStatus.MASTERED, '掌握程度：已掌握垫底');
 assert.deepEqual(sortWrongEntries([r1, r3], WRONG_SORT_MASTERY).map((e) => e.wrongCount), [1, 2], '未掌握段恒在已掌握段前');
+assert.deepEqual(sortWrongEntries([r1, r2, r3], WRONG_SORT_RANDOM), [r3, r2, r1], '随机模式的列表保持最近错顺序');
 
 // ---------- 手动掌握 / 取消（注入固定时间） ----------
 const book = [wrong('b1', 'q1')];

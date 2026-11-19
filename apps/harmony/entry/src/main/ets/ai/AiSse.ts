@@ -7,6 +7,20 @@
  */
 import { AiStreamCallback } from './AiTypes';
 
+/** 保留最新的非空行。末尾换行单独保留，等下一段文字到达时再替换当前行。 */
+export function appendAiReasoningPreview(previous: string, chunk: string): string {
+  const text = (previous + chunk).replace(/[\r\u2028\u2029]/g, '\n');
+  const visible = text.trimEnd();
+  const line = visible.slice(visible.lastIndexOf('\n') + 1).trimStart();
+  if (line.length === 0) {
+    return '';
+  }
+  const trailing = text.slice(visible.length);
+  const separator = trailing.includes('\n') ? '\n' : trailing.slice(0, 1);
+  // ponytail: 只保留单行尾部。若要展示思考全文，需要独立的历史记录。
+  return Array.from(line).slice(-160).join('') + separator;
+}
+
 export class AiSseAccumulator {
   private buffer: string = '';
   private content: string = '';

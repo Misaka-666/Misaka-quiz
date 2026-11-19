@@ -62,6 +62,7 @@ struct AiSettingsPage {
   @State apiBaseUrl: string = '';
   @State apiKey: string = '';
   @State modelName: string = '';
+  @State thinkingLevel: string = 'default';
   @State maxQuestionsText: string = '';
   @State timeoutText: string = '';
   @State refactorMaxCharsText: string = '';
@@ -77,6 +78,7 @@ struct AiSettingsPage {
   aboutToAppear(): void {
     const s = this.repo.settings;
     this.provider = s.aiProvider;
+    this.thinkingLevel = s.aiThinkingLevel;
     const preset = aiProviderPreset(s.aiProvider);
     this.apiBaseUrl = s.aiApiBaseUrl.length > 0 ? s.aiApiBaseUrl : (preset !== null ? preset.apiBaseUrl : '');
     this.apiKey = s.aiApiKey;
@@ -110,7 +112,7 @@ struct AiSettingsPage {
   }
 
   private saveConfig(): void {
-    this.repo.setAiInterfaceConfig(this.provider, this.apiBaseUrl, this.apiKey, this.modelName);
+    this.repo.setAiInterfaceConfig(this.provider, this.apiBaseUrl, this.apiKey, this.modelName, this.thinkingLevel);
     this.statusText = 'AI 接口配置已保存。';
     this.statusWarn = false;
     this.bump();
@@ -129,7 +131,7 @@ struct AiSettingsPage {
     this.bump();
     const timeout = parseInt(this.timeoutText, 10);
     MisakaAiClient.testConnection(this.apiBaseUrl, this.apiKey, this.modelName,
-      Number.isNaN(timeout) ? this.repo.settings.aiTimeoutSeconds : timeout)
+      Number.isNaN(timeout) ? this.repo.settings.aiTimeoutSeconds : timeout, this.thinkingLevel)
       .then((message: string): void => {
         this.statusText = message.length > 0 ? message : 'AI 接口连接成功。';
         this.statusWarn = false;
@@ -155,6 +157,7 @@ struct AiSettingsPage {
           this.apiBaseUrl = '';
           this.apiKey = '';
           this.modelName = '';
+          this.thinkingLevel = 'default';
           this.statusText = 'AI 配置已清除。';
           this.statusWarn = true;
           this.bump();
@@ -234,6 +237,17 @@ struct AiSettingsPage {
           .onChange((value: string): void => {
             this.modelName = value;
           })
+        Text('思考等级')
+          .fontSize(14)
+          .width('100%')
+        Row({ space: 8 }) {
+          ForEach(['default', 'none', 'low', 'high', 'max'], (level: string, index: number) => {
+            SmallChip({ label: ['默认', '关闭', '低', '高', '最高'][index],
+              active: this.thinkingLevel === level,
+              onTap: (): void => { this.thinkingLevel = level; } })
+          })
+        }
+        .width('100%')
         Row({ space: 10 }) {
           PillButton({ label: '保存配置', primary: true, grow: true, onTap: (): void => {
             this.saveConfig();

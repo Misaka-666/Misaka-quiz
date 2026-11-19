@@ -5,6 +5,8 @@
  * 纯逻辑（载荷/解析/错误文案）全部在 AiCodec.ts/AiSse.ts/AiSuggestions.ts，Node 可测。
  * 流式错误体：dataReceive 期间保留前 8KB 原文（SSE 累积器会忽略非 data 行，不冲突）。
  */
+import { SettingsStore } from '../state/SettingsStore';
+import { KEY_AI_THINKING_LEVEL } from '../state/AppSettings';
 import { http } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
 import { BusinessError } from '@kit.BasicServicesKit';
@@ -53,12 +55,12 @@ function isPlainError(err: Object): boolean {
 
 export class MisakaAiClient {
   static async testConnection(apiBaseUrl: string, apiKey: string, modelName: string,
-    timeoutSeconds: number): Promise<string> {
+    timeoutSeconds: number, thinkingLevel: string = SettingsStore.getString(KEY_AI_THINKING_LEVEL, 'default')): Promise<string> {
     validateAiConfig(apiBaseUrl, apiKey, modelName);
     const content = await MisakaAiClient.requestOnce(apiBaseUrl, apiKey, modelName,
       '你是 Misaka Quiz 的接口连通性测试助手，只返回简短确认。',
       '请只回复 JSON：{"ok":true,"message":"connected"}',
-      timeoutSeconds, 64);
+      timeoutSeconds, null, thinkingLevel);
     return content.trim().length === 0 ? '连接成功。' : `连接成功：${content.substring(0, 40)}`;
   }
 
@@ -97,11 +99,12 @@ export class MisakaAiClient {
   }
 
   static async analyzeSingleQuestion(apiBaseUrl: string, apiKey: string, modelName: string,
-    question: Question, userAnswer: string[], timeoutSeconds: number): Promise<AiSingleQuestionAnalysis> {
+    question: Question, userAnswer: string[], onReasoning: (chunk: string) => void,
+    timeoutSeconds: number): Promise<AiSingleQuestionAnalysis> {
     validateAiConfig(apiBaseUrl, apiKey, modelName);
-    const content = await MisakaAiClient.requestOnce(apiBaseUrl, apiKey, modelName,
+    const content = await MisakaAiClient.requestStream(apiBaseUrl, apiKey, modelName,
       AI_SINGLE_QUESTION_ANALYSIS_SYSTEM_PROMPT, singleQuestionUserPayload(question, userAnswer),
-      timeoutSeconds, null);
+      new AiStreamCallback(onReasoning, (): void => {}, (): void => {}), timeoutSeconds, 15);
     return parseSingleQuestionAnalysis(content, question.id);
   }
 
@@ -167,7 +170,7 @@ export class MisakaAiClient {
 
   private static async requestOnce(apiBaseUrl: string, apiKey: string, modelName: string,
     systemPrompt: string, userPayload: string, timeoutSeconds: number,
-    maxTokens: number | null): Promise<string> {
+    maxTokens: number | null, thinkingLevel: string = SettingsStore.getString(KEY_AI_THINKING_LEVEL, 'default')): Promise<string> {
     const endpoint = normalizeChatEndpoint(apiBaseUrl);
     const timeoutMillis = clampInt(timeoutSeconds, 15, 180) * 1000;
     const client: http.HttpRequest = http.createHttp();
@@ -179,7 +182,7 @@ export class MisakaAiClient {
           'Accept': 'application/json',
           'Authorization': `Bearer ${apiKey.trim()}`
         },
-        extraData: buildChatRequestBody(modelName, systemPrompt, userPayload, maxTokens, false),
+        extraData: buildChatRequestBody(modelName, systemPrompt, userPayload, maxTokens, false, thinkingLevel),
         expectDataType: http.HttpDataType.STRING,
         usingCache: false,
         connectTimeout: Math.min(timeoutMillis, 30000),
@@ -202,9 +205,9 @@ export class MisakaAiClient {
 
   private static requestStream(apiBaseUrl: string, apiKey: string, modelName: string,
     systemPrompt: string, userPayload: string, callback: AiStreamCallback,
-    timeoutSeconds: number): Promise<string> {
+    timeoutSeconds: number, minTimeoutSeconds: number = 30): Promise<string> {
     const endpoint = normalizeChatEndpoint(apiBaseUrl);
-    const timeoutMillis = clampInt(timeoutSeconds, 30, 300) * 1000;
+    const timeoutMillis = clampInt(timeoutSeconds, minTimeoutSeconds, 300) * 1000;
     return new Promise<string>((resolve: (v: string) => void, reject: (e: Error) => void) => {
       const client: http.HttpRequest = http.createHttp();
       const decoder = util.TextDecoder.create('utf-8');
@@ -288,7 +291,7 @@ export class MisakaAiClient {
           'Accept': 'text/event-stream',
           'Authorization': `Bearer ${apiKey.trim()}`
         },
-        extraData: buildChatRequestBody(modelName, systemPrompt, userPayload, null, true),
+        extraData: buildChatRequestBody(modelName, systemPrompt, userPayload, null, true, SettingsStore.getString(KEY_AI_THINKING_LEVEL, 'default')),
         usingCache: false,
         connectTimeout: Math.min(timeoutMillis, 30000),
         readTimeout: timeoutMillis

@@ -1,6 +1,7 @@
 {
   "src": [
     "pages/Index",
+    "pages/ContinuationPage",
     "pages/PracticePage",
     "pages/ExamSetupPage",
     "pages/ExamPage",

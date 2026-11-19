@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 const base = '../../apps/harmony/entry/src/main/ets';
 const { Question, QuestionType, Option } = await import(new URL(`${base}/domain/Models.ts`, import.meta.url));
 const { AiStreamCallback, AiReviewSuggestion } = await import(new URL(`${base}/ai/AiTypes.ts`, import.meta.url));
-const { AiSseAccumulator } = await import(new URL(`${base}/ai/AiSse.ts`, import.meta.url));
+const { AiSseAccumulator, appendAiReasoningPreview } = await import(new URL(`${base}/ai/AiSse.ts`, import.meta.url));
 const {
   validateAiConfig, normalizeChatEndpoint, formatAiHttpError, extractApiErrorMessage,
   buildChatRequestBody, contentFromChatResponse, reviewUserPayload, analysisUserPayload,
@@ -69,6 +69,27 @@ function runSse(chunks) {
   // 无尾换行的残行由 finish() 冲刷
   const r = runSse(['data: {"choices":[{"delta":{"content":"tail"}}]}']);
   assert.equal(r.full, 'tail', 'finish 冲刷无换行残行');
+}
+
+{
+  let preview = '';
+  const acc = new AiSseAccumulator(new AiStreamCallback(
+    (chunk) => { preview = appendAiReasoningPreview(preview, chunk); }, () => {}, () => {}));
+  const push = (delta) => acc.push(`data: ${JSON.stringify({ choices: [{ delta }] })}\n\n`);
+  push({ reasoning_content: '第一段\r' });
+  assert.equal(preview.trimEnd(), '第一段');
+  push({ reasoning_content: '\n\n  ' });
+  assert.equal(preview.trimEnd(), '第一段', '空行不清空预览，跨块换行保留边界');
+  push({ reasoning_content: '第二段 ' });
+  push({ reasoning_content: '接着写\n第三段' });
+  push({ reasoning_content: '继续' });
+  assert.equal(preview, '第三段继续', '预览只保留最新的非空行');
+  push({ reasoning_content: '\n' + '🧠'.repeat(200) + '末尾' + ' '.repeat(200) });
+  assert.equal(preview.trimEnd(), '🧠'.repeat(158) + '末尾', '长行保留尾部和完整字符');
+  push({ content: '{"analysis":' });
+  push({ content: '"正式分析"}' });
+  assert.equal(acc.finish(), '{"analysis":"正式分析"}');
+  assert.ok(preview.trimEnd().endsWith('末尾'), '正式结果不会进入思考预览');
 }
 
 // ---------- 端点与错误格式化 ----------
@@ -368,3 +389,17 @@ assert.match(prompts.AI_REVIEW_SYSTEM_PROMPT, /hard_error/);
 assert.match(prompts.AI_BANK_ANALYSIS_SYSTEM_PROMPT, /entityKnowledgeMap/);
 
 console.log('ai-client ALL PASS');
+
+// DeepSeek 思考档位在流式和非流式载荷中一致；默认不干扰兼容接口。
+for (const stream of [false, true]) {
+  for (const level of ['none', 'low', 'high', 'max']) {
+    const body = JSON.parse(buildChatRequestBody('model', 'system', 'user', null, stream, level));
+    assert.equal(body.reasoning_effort, level);
+    assert.equal(body.thinking.type, level === 'none' ? 'disabled' : 'enabled');
+    if (level !== 'none') assert.equal(body.temperature, undefined);
+  }
+  const defaults = JSON.parse(buildChatRequestBody('model', 'system', 'user', null, stream, 'default'));
+  assert.equal(defaults.reasoning_effort, undefined);
+  assert.equal(defaults.thinking, undefined);
+}
+console.log('AI thinking levels: ALL PASS');

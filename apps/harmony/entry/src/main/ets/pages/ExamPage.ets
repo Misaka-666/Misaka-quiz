@@ -257,15 +257,18 @@ struct ExamPage {
         GridItem() {
           Text(`${index + 1}`)
             .fontSize(15)
-            .fontColor(this.exam.isAnswered(this.exam.questions[index]) ? MisakaColors.ON_BRAND : MisakaColors.TEXT)
-            .backgroundColor(this.exam.isAnswered(this.exam.questions[index]) ? MisakaColors.PRIMARY : MisakaColors.CARD)
+            .fontColor(this.tick >= 0 && this.exam.isAnswered(this.exam.questions[index])
+              ? MisakaColors.ON_BRAND : MisakaColors.TEXT)
+            .backgroundColor(this.tick >= 0 && this.exam.isAnswered(this.exam.questions[index])
+              ? MisakaColors.PRIMARY : MisakaColors.CARD)
             .borderRadius(10)
-            .width(40)
+            .width('100%')
+            .constraintSize({ maxWidth: 40 })
             .height(40)
             .textAlign(TextAlign.Center)
             .border({
-              width: index === this.exam.index ? 2 : 1,
-              color: index === this.exam.index ? MisakaColors.PRIMARY : MisakaColors.BORDER
+              width: this.tick >= 0 && index === this.exam.index ? 2 : 1,
+              color: this.tick >= 0 && index === this.exam.index ? MisakaColors.PRIMARY : MisakaColors.BORDER
             })
             .onClick((): void => {
               this.exam.jumpToQuestion(index);
@@ -279,16 +282,13 @@ struct ExamPage {
     .columnsTemplate('1fr 1fr 1fr 1fr 1fr 1fr')
     .columnsGap(8)
     .rowsGap(8)
+    .scrollBar(this.isWide ? BarState.Off : BarState.Auto)
     .width('100%')
   }
 
   build() {
     Column() {
-      if (this.tick % 2 === 0) {
-        this.examBody();
-      } else {
-        this.examBody();
-      }
+      this.examBody()
     }
     .width('100%')
     .height('100%')
@@ -299,8 +299,6 @@ struct ExamPage {
     })
   }
 
-  // tick 奇偶翻转强制重建子树：会话核心是纯 .ts 数据对象，ArkUI 不对其方法读取做依赖收集，
-  // 只有真正引用 @State tick 的表达式会更新。升级路径：会话核心 @ObservedV2/@Trace 化（需解 Node 双端编译）。
   @Builder
   examBody() {
     Row({ space: 12 }) {
@@ -325,10 +323,14 @@ struct ExamPage {
           });
         })
       Column({ space: 2 }) {
-        Text(this.clockTick >= 0 ? `已答 ${this.exam.answeredCount()}/${this.exam.questions.length}` : '')
+        Text(this.tick >= 0 && this.clockTick >= 0 ? `已答 ${this.exam.answeredCount()}/${this.exam.questions.length}` : '')
           .fontSize(15)
           .fontWeight(FontWeight.Medium)
-        Progress({ value: this.clockTick >= 0 ? this.exam.answeredCount() : 0, total: Math.max(1, this.exam.questions.length), type: ProgressType.Linear })
+        Progress({
+          value: this.tick >= 0 && this.clockTick >= 0 ? this.exam.answeredCount() : 0,
+          total: Math.max(1, this.exam.questions.length),
+          type: ProgressType.Linear
+        })
           .color(MisakaColors.PRIMARY)
           .height(4)
       }
@@ -361,14 +363,14 @@ struct ExamPage {
           .width('100%')
           .padding(12)
         }
+        .scrollBar(BarState.Off)
         .width(300)
         .height('100%')
         .backgroundColor(MisakaColors.BG)
         Divider()
           .vertical(true)
         Column() {
-          this.questionPane()
-          this.bottomActions()
+          this.liveQuestionBody()
         }
         .layoutWeight(1)
         .height('100%')
@@ -376,10 +378,21 @@ struct ExamPage {
       .layoutWeight(1)
     } else {
       Column() {
-        this.questionPane()
-        this.bottomActions()
+        this.liveQuestionBody()
       }
       .layoutWeight(1)
+    }
+  }
+
+  // ponytail: 纯 TS 会话靠 tick 刷新。仅重建题目和操作区，保留答题卡的滚动容器。
+  @Builder
+  liveQuestionBody() {
+    if (this.tick % 2 === 0) {
+      this.questionPane()
+      this.bottomActions()
+    } else {
+      this.questionPane()
+      this.bottomActions()
     }
   }
 

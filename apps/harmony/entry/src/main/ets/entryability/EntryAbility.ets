@@ -1,3 +1,4 @@
+import { PracticeContinuation } from '../state/PracticeContinuation';
 /*
  * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +19,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window } from '@kit.ArkUI';
 import { QuizRepository } from '../state/QuizRepository';
 import { SettingsStore } from '../state/SettingsStore';
-import { applyAppColorMode } from '../state/AppSettings';
+import { applyAppColorMode, applyAppWindowColors } from '../state/AppSettings';
 
 const DOMAIN = 0x0000;
 
@@ -30,10 +31,34 @@ export default class EntryAbility extends UIAbility {
       hilog.error(DOMAIN, 'testTag', 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(err));
     }
     QuizRepository.getInstance().init(this.context);
+    PracticeContinuation.init(this.context).setAvailable(false);
+    this.handleContinuation(want, launchParam);
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
   }
 
+  private restoring: boolean = false;
+
+  private handleContinuation(want: Want, param: AbilityConstant.LaunchParam): void {
+    if (param.launchReason !== AbilityConstant.LaunchReason.CONTINUATION) { return; }
+    this.restoring = true;
+    PracticeContinuation.init(this.context).stage(want);
+    this.context.restoreWindowStage(new LocalStorage());
+  }
+
+  onNewWant(want: Want, param: AbilityConstant.LaunchParam): void {
+    this.handleContinuation(want, param);
+  }
+
+  onContinue(params: Record<string, Object>): Promise<AbilityConstant.OnContinueResult> {
+    return PracticeContinuation.init(this.context).send(params);
+  }
+
+  onWindowStageRestore(windowStage: window.WindowStage): void {
+    this.onWindowStageCreate(windowStage);
+  }
+
   onDestroy(): void {
+    PracticeContinuation.get()?.cancel();
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onDestroy');
   }
 
@@ -43,11 +68,13 @@ export default class EntryAbility extends UIAbility {
     // preferences 是异步打开的：先就绪并回灌设置，再加载首页——
     // 保证首帧即为已存色模式（不闪浅色），开屏浮层决策也读到真实设置
     const loadMainPage = (): void => {
-      windowStage.loadContent('pages/Index', (err) => {
+      windowStage.loadContent(this.restoring ? 'pages/ContinuationPage' : 'pages/Index', (err) => {
         if (err.code) {
           hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
           return;
         }
+        void applyAppWindowColors(this.context, QuizRepository.getInstance().settings.darkThemeEnabled);
+        if (this.restoring) { this.restoring = false; PracticeContinuation.get()?.receive(); }
         hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
       });
     };
@@ -71,6 +98,7 @@ export default class EntryAbility extends UIAbility {
   }
 
   onBackground(): void {
+    QuizRepository.getInstance().persist();
     // Ability has back to background
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
   }

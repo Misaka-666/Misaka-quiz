@@ -33,7 +33,7 @@ export const TYPE_LABELS: Record<string, string> = {
 };
 
 /** 应用版本标签（与 AppScope/app.json5 versionName 同步 bump） */
-export const APP_VERSION_LABEL = 'v0.9.6-harmony';
+export const APP_VERSION_LABEL = 'v0.9.21-harmony';
 
 export const TYPE_COMPACT_LABELS: Record<string, string> = {
   'SINGLE': '单选', 'MULTIPLE': '多选', 'JUDGE': '判断', 'BLANK': '填空', 'SHORT': '简答'
@@ -305,11 +305,13 @@ export struct SettingToggleRow {
 
 @Component
 export struct AnswerResultBlock {
-  @Prop correct: boolean;
+  @Prop correct: boolean = false;
+  @Prop showVerdict: boolean = true;
   @Prop title: string;
   @Prop body: string;
   build() {
     Column({ space: 8 }) {
+      if (this.showVerdict) {
       Text(this.correct ? '回答正确' : '回答错误')
         .fontSize(14)
         .fontWeight(FontWeight.Bold)
@@ -318,6 +320,7 @@ export struct AnswerResultBlock {
         .borderRadius(14)
         .padding({ left: 14, right: 14, top: 6, bottom: 6 })
         .alignSelf(ItemAlign.Start)
+      }
       if (this.title.length > 0) {
         Text(this.title)
           .fontSize(14)
@@ -348,6 +351,25 @@ export struct InfoNotice {
       .backgroundColor(this.warning ? MisakaColors.AMBER_SOFT : MisakaColors.MUTED)
       .borderRadius(10)
       .padding(12)
+      .width('100%')
+  }
+}
+
+@Component
+export struct AiReasoningLine {
+  @Prop reasoning: string;
+  @Prop waitingText: string;
+
+  build() {
+    Text(this.reasoning.trimEnd() || this.waitingText)
+      .fontSize(13)
+      .fontColor(MisakaColors.TEXT_SUB)
+      .backgroundColor(MisakaColors.MUTED)
+      .borderRadius(10)
+      .padding(12)
+      .maxLines(1)
+      .textOverflow({ overflow: TextOverflow.Ellipsis })
+      .ellipsisMode(this.reasoning.trimEnd().length > 0 ? EllipsisMode.START : EllipsisMode.END)
       .width('100%')
   }
 }

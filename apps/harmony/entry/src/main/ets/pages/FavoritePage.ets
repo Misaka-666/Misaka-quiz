@@ -1,13 +1,16 @@
 /**
- * M5 收藏夹 — 分组/题库二级筛选、取消收藏、收藏练习。1:1 对齐 Android FavoriteScreen。
+ * 收藏夹：按分组、题库和题型筛选，可按列表顺序或随机练习。
  */
 import { router } from '@kit.ArkUI';
 import { QuizRepository } from '../state/QuizRepository';
+import { ALL_QUESTION_TYPES } from '../state/PracticeSessionCore';
 import { FavoriteQuestionEntry, Question, QuizBank, DEFAULT_BANK_GROUP_NAME } from '../domain/Models';
 import { hasStructuredAnswers, expectedAnswerText } from '../importer/model/MultiBlankSupport';
 import {
-  MisakaColors, PillButton, StatusChip, TypeBadge, formatShortTimestamp
+  MisakaColors, PillButton, SmallChip, StatusChip, TypeBadge, TYPE_COMPACT_LABELS, formatShortTimestamp
 } from './common/QuizWidgets';
+
+const FAVORITE_QUESTION_TYPES: string[] = [''].concat(ALL_QUESTION_TYPES);
 
 class FavGroupInfo {
   name: string;
@@ -27,6 +30,8 @@ struct FavoritePage {
   @State tick: number = 0;
   @State favGroupFilter: string | null = null;
   @State favBankFilter: string | null = null;
+  @State questionType: string = '';
+  @State randomize: boolean = false;
   @State showGroupSheet: boolean = false;
   @State expandedGroups: string[] = [];
 
@@ -47,13 +52,15 @@ struct FavoritePage {
   }
 
   private filtered(): FavoriteQuestionEntry[] {
-    if (this.favBankFilter !== null) {
-      return this.favorites().filter((entry): boolean => entry.bankId === this.favBankFilter);
-    }
-    if (this.favGroupFilter !== null) {
-      return this.favorites().filter((entry): boolean => this.groupNameOf(entry) === this.favGroupFilter);
-    }
-    return this.favorites();
+    return this.favorites().filter((entry: FavoriteQuestionEntry): boolean => {
+      if (this.questionType !== '' && entry.question.type !== this.questionType) {
+        return false;
+      }
+      if (this.favBankFilter !== null) {
+        return entry.bankId === this.favBankFilter;
+      }
+      return this.favGroupFilter === null || this.groupNameOf(entry) === this.favGroupFilter;
+    });
   }
 
   private filterLabel(): string {
@@ -106,7 +113,7 @@ struct FavoritePage {
   }
 
   private startPractice(): void {
-    if (this.repo.startFavoritePractice(this.filtered())) {
+    if (this.repo.startFavoritePractice(this.filtered(), this.randomize)) {
       router.pushUrl({ url: 'pages/PracticePage' });
     }
   }
@@ -155,6 +162,7 @@ struct FavoritePage {
         .padding({ left: 16, right: 16, bottom: 24 })
       }
       .layoutWeight(1)
+      .align(Alignment.Top)
       .scrollBar(BarState.Off)
       .width('100%')
     }
@@ -204,9 +212,25 @@ struct FavoritePage {
             }
           }
           .width('100%')
-          Text('收藏夹由你手动标记，可用于集中回看和再次练习。')
-            .fontSize(13)
-            .fontColor(MisakaColors.TEXT_SUB)
+          Flex({ wrap: FlexWrap.Wrap }) {
+            ForEach(FAVORITE_QUESTION_TYPES, (type: string) => {
+              SmallChip({ label: type === '' ? '全部题型' : TYPE_COMPACT_LABELS[type],
+                active: this.questionType === type, onTap: (): void => {
+                  this.questionType = type;
+                  this.tick += 1;
+                } })
+            }, (type: string): string => type)
+          }
+          .width('100%')
+          Flex({ wrap: FlexWrap.Wrap }) {
+            SmallChip({ label: '按列表顺序', active: !this.randomize, onTap: (): void => {
+              this.randomize = false;
+            } })
+            SmallChip({ label: '随机', active: this.randomize, onTap: (): void => {
+              this.randomize = true;
+            } })
+          }
+          .width('100%')
           Row({ space: 10 }) {
             PillButton({ label: '练习收藏题', primary: true, isEnabled: this.filtered().length > 0, grow: true, onTap: (): void => {
               this.startPractice();
@@ -222,9 +246,16 @@ struct FavoritePage {
         .borderRadius(14)
         .width('100%')
 
-        ForEach(this.filtered(), (entry: FavoriteQuestionEntry) => {
-          this.favCard(entry)
-        }, (entry: FavoriteQuestionEntry): string => `${entry.bankId}#${entry.question.id}`)
+        if (this.filtered().length === 0) {
+          Text('没有符合筛选的收藏题')
+            .fontSize(13)
+            .fontColor(MisakaColors.TEXT_SUB)
+            .padding(12)
+        } else {
+          ForEach(this.filtered(), (entry: FavoriteQuestionEntry) => {
+            this.favCard(entry)
+          }, (entry: FavoriteQuestionEntry): string => `${entry.bankId}#${entry.question.id}`)
+        }
       }
     }
     .constraintSize({ maxWidth: 760 })

@@ -1,3 +1,9 @@
+import {
+  ContinuationPayload, jsonRecord, jsonArray, mapImagePaths, mergeContinuationBanks,
+  retainLocalPractices, newPracticeId
+} from './ContinuationCodec';
+import { ContinuationFiles, ReceivedContinuation } from './ContinuationFiles';
+import { promptAction } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { util } from '@kit.ArkTS';
 import { fileIo } from '@kit.CoreFileKit';
@@ -27,7 +33,7 @@ import {
 import {
   KEY_WRONG_BOOK_SMART_REVIEW_ENABLED, KEY_WRONG_BOOK_SCOPE_MODE,
   KEY_WRONG_BOOK_SCOPE_GROUP_NAME, KEY_WRONG_BOOK_SCOPE_BANK_ID,
-  KEY_AI_PROVIDER, KEY_AI_API_BASE_URL, KEY_AI_API_KEY, KEY_AI_MODEL_NAME,
+  KEY_AI_THINKING_LEVEL, KEY_AI_PROVIDER, KEY_AI_API_BASE_URL, KEY_AI_API_KEY, KEY_AI_MODEL_NAME,
   KEY_AI_REFACTOR_ENABLED, KEY_AI_REVIEW_ENABLED, KEY_AI_ANALYSIS_ENABLED,
   KEY_AI_SINGLE_QUESTION_ANALYSIS_ENABLED, KEY_AI_ONLY_ANOMALY, KEY_AI_REQUIRE_CONFIRM,
   KEY_AI_MAX_QUESTIONS, KEY_AI_TIMEOUT_SECONDS, KEY_AI_REFACTOR_MAX_CHARS
@@ -87,6 +93,9 @@ export class QuizRepository {
   private static instance: QuizRepository | null = null;
 
   private context: common.UIAbilityContext | null = null;
+  private practiceSaveTimer: number = -1;
+  private saveFailed: boolean = false;
+  private persistenceRevision: number = 0;
   banks: QuizBank[] = [];
   activeBankId: string = '';
   wrongBook: WrongQuestionEntry[] = [];
@@ -94,6 +103,10 @@ export class QuizRepository {
   favoriteQuestions: FavoriteQuestionEntry[] = [];
   studyRecords: StudyRecord[] = [];
   practiceSequentialProgress: Record<string, number> = {};
+  savedPractices: Record<string, Object>[] = [];
+  completedPracticeIds: string[] = [];
+  beforeContinuation: () => void = (): void => {};
+  continuationBusy: boolean = false;
   settings: AppSettings = new AppSettings();
   practice: PracticeSessionCore = new PracticeSessionCore(new PracticeHost());
   exam: ExamSessionCore = new ExamSessionCore(new PracticeHost());
@@ -114,6 +127,15 @@ export class QuizRepository {
     this.settings = AppSettings.load();
     const host = this.buildHost();
     this.practice = new PracticeSessionCore(host);
+    if (state !== null && isJsonObject(state['practiceSession'])) {
+      this.practice.restoreSnapshot(state['practiceSession'] as Record<string, Object>);
+    }
+    if (state !== null) {
+      this.savedPractices = toJsonArray(state['savedPractices']).filter((v: Object): boolean => isJsonObject(v))
+        .map((v: Object): Record<string, Object> => v as Record<string, Object>);
+      this.completedPracticeIds = toJsonArray(state['completedPracticeIds']).filter((v: Object): boolean => typeof v === 'string')
+        .map((v: Object): string => v as string);
+    }
     this.exam = new ExamSessionCore(host);
     this.exam.examOptionShufflePrefEnabled = this.settings.examOptionShuffleEnabled;
   }
@@ -135,6 +157,8 @@ export class QuizRepository {
     host.favoriteQuestions = (): FavoriteQuestionEntry[] => repo.favoriteQuestions;
     host.isSlashed = (bankId: string, question: Question): boolean => repo.isQuestionSlashed(bankId, question);
     host.addRecord = (record: StudyRecord): void => {
+      if (repo.completedPracticeIds.includes(record.id)) { return; }
+      repo.completedPracticeIds.push(record.id);
       repo.studyRecords.unshift(record);
     };
     host.sequentialProgress = (key: string): number | null => {
@@ -145,6 +169,7 @@ export class QuizRepository {
       repo.practiceSequentialProgress[key] = value;
     };
     host.now = (): number => Date.now();
+    host.checkpoint = (): void => repo.schedulePracticeSave();
     host.persist = (): void => {
       repo.persist();
     };
@@ -242,12 +267,14 @@ export class QuizRepository {
       this.settings.aiModelName.trim().length > 0;
   }
 
-  setAiInterfaceConfig(provider: string, apiBaseUrl: string, apiKey: string, modelName: string): void {
+  setAiInterfaceConfig(provider: string, apiBaseUrl: string, apiKey: string, modelName: string, thinkingLevel: string = 'default'): void {
     const s = this.settings;
     s.aiProvider = provider.trim().length > 0 ? provider : 'DeepSeek';
     s.aiApiBaseUrl = apiBaseUrl.trim();
     s.aiApiKey = apiKey.trim();
     s.aiModelName = modelName.trim();
+    s.aiThinkingLevel = thinkingLevel;
+    s.putString(KEY_AI_THINKING_LEVEL, thinkingLevel);
     s.putString(KEY_AI_PROVIDER, s.aiProvider);
     s.putString(KEY_AI_API_BASE_URL, s.aiApiBaseUrl);
     s.putString(KEY_AI_API_KEY, s.aiApiKey);
@@ -293,6 +320,8 @@ export class QuizRepository {
     s.aiApiBaseUrl = '';
     s.aiApiKey = '';
     s.aiModelName = '';
+    s.aiThinkingLevel = 'default';
+    s.putString(KEY_AI_THINKING_LEVEL, 'default');
     s.aiRefactorEnabled = false;
     s.aiReviewEnabled = false;
     s.aiAnalysisEnabled = false;
@@ -379,14 +408,18 @@ export class QuizRepository {
     this.persist();
   }
 
+  wrongBookPracticeEntries(entries: WrongQuestionEntry[], includeMastered: boolean): WrongQuestionEntry[] {
+    return entries.filter((entry): boolean => (includeMastered || entry.status !== WrongStatus.MASTERED) &&
+      !this.isQuestionSlashed(entry.bankId, entry.question));
+  }
+
   /** 错题练习（默认刷当前筛选）；sourceLabel 决定记录来源（错题本/今日复习） */
-  startWrongBookPractice(entries: WrongQuestionEntry[], includeMastered: boolean, sourceLabel: string): boolean {
-    const selected = entries
-      .filter((entry): boolean => includeMastered || entry.status !== WrongStatus.MASTERED)
-      .filter((entry): boolean => !this.isQuestionSlashed(entry.bankId, entry.question));
+  startWrongBookPractice(entries: WrongQuestionEntry[], includeMastered: boolean, sourceLabel: string,
+    randomize: boolean = false): boolean {
+    const selected = this.wrongBookPracticeEntries(entries, includeMastered);
     return this.startSourceEntryPractice(selected.map((entry): PracticeQuestionSource =>
       new PracticeQuestionSource(entry.bankId, entry.bankName, this.groupNameOfBank(entry.bankId), entry.question)
-    ), sourceLabel);
+    ), sourceLabel, randomize);
   }
 
   startTodayWrongBookReview(): boolean {
@@ -418,10 +451,10 @@ export class QuizRepository {
     return false;
   }
 
-  startFavoritePractice(entries: FavoriteQuestionEntry[]): boolean {
+  startFavoritePractice(entries: FavoriteQuestionEntry[], randomize: boolean = false): boolean {
     return this.startSourceEntryPractice(entries.map((entry): PracticeQuestionSource =>
       new PracticeQuestionSource(entry.bankId, entry.bankName, this.groupNameOfBank(entry.bankId), entry.question)
-    ), '收藏夹');
+    ), '收藏夹', randomize);
   }
 
   findStudyRecord(recordId: string): StudyRecord | null {
@@ -447,8 +480,9 @@ export class QuizRepository {
     return bank !== undefined ? bank.groupName : DEFAULT_BANK_GROUP_NAME;
   }
 
-  /** 收藏/错题会话启动公共路径：全部题型、不乱序、即时判题、记录来源由 sourceLabel 决定 */
-  private startSourceEntryPractice(items: PracticeQuestionSource[], sourceLabel: string): boolean {
+  /** 收藏/错题会话启动公共路径：全部题型、即时判题、记录来源由 sourceLabel 决定 */
+  private startSourceEntryPractice(items: PracticeQuestionSource[], sourceLabel: string,
+    randomize: boolean = false): boolean {
     const seen = new Set<string>();
     const distinct: PracticeQuestionSource[] = [];
     for (const item of items) {
@@ -461,7 +495,7 @@ export class QuizRepository {
     if (distinct.length === 0) {
       return false;
     }
-    return this.practice.start(distinct, ALL_QUESTION_TYPES.slice(), false, PRACTICE_MODE_INSTANT,
+    return this.practice.start(distinct, ALL_QUESTION_TYPES.slice(), randomize, PRACTICE_MODE_INSTANT,
       this.settings.resolvePreferredBatchGroupSize(), null, sourceLabel);
   }
 
@@ -491,6 +525,8 @@ export class QuizRepository {
     this.favoriteQuestions = [];
     this.studyRecords = [];
     this.practiceSequentialProgress = {};
+    this.savedPractices = [];
+    this.completedPracticeIds = [];
     for (const raw of toJsonArray(state['banks'])) {
       if (isJsonObject(raw)) {
         this.banks.push(parseBank(raw));
@@ -541,10 +577,21 @@ export class QuizRepository {
     }
   }
 
-  persist(): void {
+  private schedulePracticeSave(): void {
+    // ponytail: 复用原子状态文件，最多每 250ms 写一次；大题库若出现卡顿再拆分会话存储。
+    if (this.practiceSaveTimer >= 0) { return; }
+    this.practiceSaveTimer = setTimeout((): void => { this.persist(); }, 250);
+  }
+
+  persist(): boolean {
+    this.persistenceRevision += 1;
+    if (this.practiceSaveTimer >= 0) {
+      clearTimeout(this.practiceSaveTimer);
+      this.practiceSaveTimer = -1;
+    }
     const context = this.context;
     if (context === null) {
-      return;
+      return false;
     }
     const banks: Object[] = [];
     for (const bank of this.banks) {
@@ -580,9 +627,139 @@ export class QuizRepository {
       'slashedQuestions': slashed,
       'favoriteQuestions': favorites,
       'studyRecords': records,
-      'practiceSequentialProgress': progress
+      'practiceSequentialProgress': progress,
+      'practiceSession': this.practice.snapshot(),
+      'savedPractices': this.savedPractices, 'completedPracticeIds': this.completedPracticeIds
     };
-    FileStore.writeTextAtomic(context.filesDir, STATE_FILE, JSON.stringify(state));
+    const saved = FileStore.writeTextAtomic(context.filesDir, STATE_FILE, JSON.stringify(state));
+    if (!saved && !this.saveFailed) {
+      promptAction.showToast({ message: '保存失败，请检查存储空间，暂时不要关闭应用。' });
+    }
+    this.saveFailed = !saved;
+    return saved;
+  }
+
+  /** 将影响判题展示的偏好固定到当前练习，不修改本机默认设置。 */
+  preparePracticeView(): boolean {
+    const previous = this.practice.snapshot();
+    if (this.practice.transferred) {
+      this.practice.sessionId = newPracticeId();
+      this.practice.revision = newPracticeId();
+      this.practice.transferred = false;
+    }
+    if (this.practice.reciteMode === null) { this.practice.reciteMode = this.settings.practiceReciteModeEnabled; }
+    if (this.practice.shuffleEnabled === null) { this.practice.shuffleEnabled = this.settings.practiceOptionShuffleEnabled; }
+    if (this.persist()) { return true; }
+    this.practice.restoreSnapshot(previous);
+    return false;
+  }
+
+  switchSavedPractice(index: number): boolean {
+    if (this.continuationBusy || index < 0 || index >= this.savedPractices.length) { return false; }
+    const previous = this.practice.snapshot();
+    const saved = this.savedPractices.slice();
+    const target = this.savedPractices[index];
+    if (!this.practice.restoreSnapshot(target)) { return false; }
+    this.savedPractices = saved.filter((_v: Record<string, Object>, i: number): boolean => i !== index);
+    if (Object.keys(previous).length > 0) { this.savedPractices.push(previous); }
+    if (this.persist()) { return true; }
+    this.savedPractices = saved;
+    if (Object.keys(previous).length > 0) { this.practice.restoreSnapshot(previous); } else { this.practice.resetState(); }
+    return false;
+  }
+
+  continuationPayload(): ContinuationPayload {
+    if (this.practice.questions.length === 0 || this.practice.transferred) { throw new Error('请先打开要接续的练习'); }
+    this.beforeContinuation();
+    if (!this.persist()) { throw new Error('练习保存失败，暂时无法接续'); }
+    const payload = new ContinuationPayload();
+    payload.snapshot = this.practice.snapshot();
+    const refs = jsonRecord(payload.snapshot['banks']);
+    const ids = new Set<string>();
+    for (const key of Object.keys(refs)) { ids.add(refs[key] as string); }
+    payload.banks = this.banks.filter((bank: QuizBank): boolean => ids.has(bank.id))
+      .map((bank: QuizBank): Record<string, Object> => bankToJson(bank));
+    // 只带当前练习涉及题目的错题状态，不发送无关历史。
+    const keys = new Set<string>();
+    const questions = jsonArray(payload.snapshot['questions']);
+    const sessionKeys = jsonArray(payload.snapshot['keys']);
+    for (let i = 0; i < questions.length; i++) {
+      const bankId = refs[sessionKeys[i] as string] as string;
+      keys.add(`${bankId}|${questionKeyOf(this.practice.questions[i])}`);
+    }
+    payload.wrongBook = this.wrongBook.filter((entry: WrongQuestionEntry): boolean => keys.has(`${entry.bankId}|${questionKeyOf(entry.question)}`))
+      .map((entry: WrongQuestionEntry): Record<string, Object> => wrongEntryToJson(entry));
+    return payload;
+  }
+
+  async acceptContinuation(received: ReceivedContinuation, files: ContinuationFiles, isCurrent: () => boolean): Promise<void> {
+    const id = received.payload.snapshot['sessionId'] as string;
+    if (this.completedPracticeIds.includes(id) || this.studyRecords.some((r: StudyRecord): boolean => r.id === id)) {
+      throw new Error('这场练习已在本机完成，不能重复接收');
+    }
+    const originalBanks = this.banks;
+    const persistenceRevision = this.persistenceRevision;
+    const local = await files.portableBanks(originalBanks.map((b: QuizBank): Record<string, Object> => bankToJson(b)),
+      received.payload, received.paths);
+    if (!isCurrent()) { throw new Error('接续已取消'); }
+    if (this.persistenceRevision !== persistenceRevision) { throw new Error('本机数据已改变，请重新接收'); }
+    const merged = mergeContinuationBanks(local, received.payload);
+    const toLocal = (path: string): string => received.paths.get(path) ?? path;
+    const banks = merged.banks.map((bank: Record<string, Object>): QuizBank => parseBank(mapImagePaths(bank, toLocal)));
+    const snapshot = mapImagePaths(merged.snapshot, toLocal) as Record<string, Object>;
+    snapshot['transferred'] = false;
+    const probeHost = new PracticeHost();
+    probeHost.banks = (): QuizBank[] => banks;
+    if (!new PracticeSessionCore(probeHost).restoreSnapshot(snapshot)) { throw new Error('练习存档不完整，原进度已保留'); }
+    const previous = this.practice.snapshot();
+    const previousSaved = this.savedPractices;
+    const previousWrong = this.wrongBook;
+    const wrong = previousWrong.map((e: WrongQuestionEntry): WrongQuestionEntry => parseWrongEntry(wrongEntryToJson(e)) as WrongQuestionEntry);
+    for (const raw of merged.wrongBook) {
+      const incoming = parseWrongEntry(mapImagePaths(raw, toLocal) as Record<string, Object>);
+      if (incoming === null) { throw new Error('接续错题记录损坏'); }
+      const existing = wrong.find((e: WrongQuestionEntry): boolean => e.bankId === incoming.bankId && questionKeyOf(e.question) === questionKeyOf(incoming.question));
+      if (existing === undefined) { wrong.push(incoming); }
+      else {
+        // ponytail: 不做历史同步。累计次数取最大值；任一端仍未掌握时保留复习需求。
+        existing.wrongCount = Math.max(existing.wrongCount, incoming.wrongCount);
+        existing.rightCount = Math.max(existing.rightCount, incoming.rightCount);
+        if (incoming.status !== WrongStatus.MASTERED) {
+          existing.status = incoming.status === WrongStatus.NOT_MASTERED ? WrongStatus.NOT_MASTERED :
+            (existing.status === WrongStatus.NOT_MASTERED ? WrongStatus.NOT_MASTERED : WrongStatus.REVIEWING);
+          existing.streakCorrectCount = Math.min(existing.streakCorrectCount, incoming.streakCorrectCount);
+          existing.reviewRightCount = Math.min(existing.reviewRightCount, incoming.reviewRightCount);
+          existing.reviewLevel = Math.min(existing.reviewLevel, incoming.reviewLevel);
+          existing.nextReviewAt = Math.min(existing.nextReviewAt ?? 0, incoming.nextReviewAt ?? 0);
+        }
+      }
+    }
+    this.banks = banks;
+    this.wrongBook = wrong;
+    this.savedPractices = retainLocalPractices(previousSaved.concat([previous]), snapshot);
+    this.practice.restoreSnapshot(snapshot);
+    if (this.persist()) { return; }
+    this.banks = originalBanks;
+    this.wrongBook = previousWrong;
+    this.savedPractices = previousSaved;
+    if (Object.keys(previous).length > 0) { this.practice.restoreSnapshot(previous); } else { this.practice.resetState(); }
+    throw new Error('接续保存失败，原数据已保留');
+  }
+
+  markPracticeTransferred(id: string, revision: string): boolean {
+    if (this.practice.sessionId !== id || this.practice.revision !== revision) { return false; }
+    const previous = this.practice.snapshot();
+    const saved = this.savedPractices;
+    const transferred = this.practice.snapshot();
+    transferred['transferred'] = true;
+    this.savedPractices = saved.filter((item: Record<string, Object>): boolean =>
+      item['sessionId'] !== id || item['revision'] !== revision).concat([transferred]);
+    // 不结算已接走的练习。源端可从暂存列表另开分支继续。
+    this.practice.resetState();
+    if (this.persist()) { return true; }
+    this.savedPractices = saved;
+    this.practice.restoreSnapshot(previous);
+    return false;
   }
 
   // ---------- 备份导入/导出（M6，协议对齐 Android backup.json v3 + web_backup） ----------
@@ -689,6 +866,8 @@ export class QuizRepository {
     this.favoriteQuestions = [];
     this.studyRecords = [];
     this.practiceSequentialProgress = {};
+    this.savedPractices = [];
+    this.completedPracticeIds = [];
     this.activeBankId = '';
     this.practice.resetState();
     this.exam.reset();
@@ -729,6 +908,10 @@ export class QuizRepository {
     if (this.activeBankId === bankId) {
       this.activeBankId = this.banks.length > 0 ? this.banks[0].id : '';
     }
+    this.savedPractices = this.savedPractices.filter((saved: Record<string, Object>): boolean => {
+      const refs = saved['banks'] as Record<string, Object>;
+      return refs !== undefined && !Object.keys(refs).some((key: string): boolean => refs[key] === bankId);
+    });
     this.practice.resetState();
     this.exam.reset();
     this.persist();

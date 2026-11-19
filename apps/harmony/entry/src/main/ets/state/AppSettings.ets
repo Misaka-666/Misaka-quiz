@@ -1,6 +1,9 @@
 import { SettingsStore } from './SettingsStore';
 import { QuestionType } from '../domain/Models';
 import { common, ConfigurationConstant } from '@kit.AbilityKit';
+import { ColorMetrics } from '@kit.ArkUI';
+import { resourceManager } from '@kit.LocalizationKit';
+import { hilog } from '@kit.PerformanceAnalysisKit';
 
 /**
  * 应用设置 — 1:1 对应 Android QuizRepository 的偏好字段（键名/默认值一致）。
@@ -49,6 +52,7 @@ export const KEY_STARTUP_SPLASH_ENABLED = 'startup_splash_enabled';
 export const KEY_AI_PROVIDER = 'ai_provider';
 export const KEY_AI_API_BASE_URL = 'ai_api_base_url';
 export const KEY_AI_API_KEY = 'ai_api_key';
+export const KEY_AI_THINKING_LEVEL = 'ai_thinking_level';
 export const KEY_AI_MODEL_NAME = 'ai_model_name';
 export const KEY_AI_REFACTOR_ENABLED = 'ai_refactor_enabled';
 export const KEY_AI_REVIEW_ENABLED = 'ai_review_enabled';
@@ -71,6 +75,23 @@ export function applyAppColorMode(context: common.UIAbilityContext, dark: boolea
       : ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT);
   } catch (_err) {
     // ponytail: 失败仅保持当前模式（与 Android 一致，主题失败不崩溃）
+  }
+}
+
+/** 页面加载后绘制窗口边缘，保留系统栏的默认避让。 */
+export async function applyAppWindowColors(context: common.UIAbilityContext, dark: boolean): Promise<void> {
+  try {
+    const resources = context.resourceManager;
+    const config = resources.getOverrideConfiguration();
+    config.colorMode = dark ? resourceManager.ColorMode.DARK : resourceManager.ColorMode.LIGHT;
+    const themedResources = resources.getOverrideResourceManager(config);
+    const background = themedResources.getColorSync($r('app.color.misaka_bg').id);
+    const foreground = themedResources.getColorSync($r('app.color.misaka_text').id);
+    const mainWindow = context.windowStage.getMainWindowSync();
+    mainWindow.setWindowBackgroundColor(ColorMetrics.numeric(background));
+    await mainWindow.setStatusBarColor(ColorMetrics.numeric(foreground));
+  } catch (err) {
+    hilog.warn(0x0000, 'AppTheme', 'Failed to set window colors: %{public}s', JSON.stringify(err));
   }
 }
 
@@ -188,6 +209,7 @@ export class AppSettings {
   aiApiBaseUrl = '';
   aiApiKey = '';
   aiModelName = '';
+  aiThinkingLevel = 'default';
   aiRefactorEnabled = false;
   aiReviewEnabled = false;
   aiAnalysisEnabled = false;
@@ -250,6 +272,7 @@ export class AppSettings {
     s.aiApiBaseUrl = SettingsStore.getString(KEY_AI_API_BASE_URL, '');
     s.aiApiKey = SettingsStore.getString(KEY_AI_API_KEY, '');
     s.aiModelName = SettingsStore.getString(KEY_AI_MODEL_NAME, '');
+    s.aiThinkingLevel = SettingsStore.getString(KEY_AI_THINKING_LEVEL, 'default');
     s.aiRefactorEnabled = SettingsStore.getBool(KEY_AI_REFACTOR_ENABLED, false);
     s.aiReviewEnabled = SettingsStore.getBool(KEY_AI_REVIEW_ENABLED, false);
     s.aiAnalysisEnabled = SettingsStore.getBool(KEY_AI_ANALYSIS_ENABLED, false);

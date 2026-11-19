@@ -120,7 +120,7 @@ struct AboutPage {
           .borderRadius(14)
           .width('100%')
 
-          InfoNotice({ text: `版本 ${APP_VERSION_LABEL} · 鸿蒙原生（ArkTS/ArkUI）`, warning: false })
+          InfoNotice({ text: `版本 ${APP_VERSION_LABEL}`, warning: false })
 
           if (this.openStatus.length > 0) {
             InfoNotice({ text: this.openStatus, warning: this.openWarning })

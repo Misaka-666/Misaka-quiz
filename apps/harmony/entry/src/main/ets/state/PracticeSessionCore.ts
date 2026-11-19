@@ -1,3 +1,4 @@
+import { newPracticeId } from './ContinuationCodec';
 /**
  * 练习会话状态机 — 1:1 移植自 Android QuizRepository 的练习段
  * （startPracticeSession / startSequentialPracticeSession / submit* / batch / slash /
@@ -7,6 +8,7 @@
 import {
   Question, QuestionType, QuizBank, StudyQuestionResult, StudyRecord,
   WrongQuestionEntry, SlashedQuestionEntry, FavoriteQuestionEntry,
+  questionToJson, parseQuestion, studyRecordToJson, parseStudyRecord,
   DEFAULT_BANK_GROUP_NAME, normalizeBankGroupName
 } from '../domain/Models';
 import { hasStructuredAnswers, padUserAnswers, expectedAnswerText, isUserAnswerComplete, sanitizeQuestion } from '../importer/model/MultiBlankSupport';
@@ -54,6 +56,7 @@ export class PracticeHost {
   sequentialProgress: (key: string) => number | null = (_key: string): number | null => null;
   setSequentialProgress: (key: string, value: number) => void = (_key: string, _value: number): void => {};
   now: () => number = (): number => Date.now();
+  checkpoint: () => void = (): void => {};
   persist: () => void = (): void => {};
 }
 
@@ -95,7 +98,21 @@ export function resolveSequentialStartIndex(
 }
 
 export class PracticeSessionCore {
+  sessionId: string = newPracticeId();
+  revision: string = newPracticeId();
+  transferred: boolean = false;
+  reciteMode: boolean | null = null;
+  shuffleEnabled: boolean | null = null;
   private host: PracticeHost;
+
+  private checkpoint(): void {
+    this.revision = newPracticeId();
+    this.host.checkpoint();
+  }
+  private persist(): void {
+    this.revision = newPracticeId();
+    this.host.persist();
+  }
   questions: Question[] = [];
   private questionSessionKeys: string[] = [];
   sourceLabel = '当前题库';
@@ -120,6 +137,113 @@ export class PracticeSessionCore {
 
   constructor(host: PracticeHost) {
     this.host = host;
+  }
+
+  /** 只保存练习现场，不写入学习记录。复用题目和判题结果的已有编解码。 */
+  snapshot(): Record<string, Object> {
+    if (this.questions.length === 0) { return {}; }
+    const record = new StudyRecord('draft', '', '', '', 0, 0, 0);
+    const resultKeys: string[] = [];
+    for (const key of this.answerResults.keys()) {
+      resultKeys.push(key);
+      record.questionResults.push(this.answerResults.get(key) as StudyQuestionResult);
+    }
+    const drafts: Record<string, Object> = {};
+    const banks: Record<string, Object> = {};
+    for (const key of this.questionSessionKeys) {
+      const draft = this.draftAnswers.get(key);
+      if (draft !== undefined) { drafts[key] = draft.slice(); }
+      const bankId = this.questionBankIds.get(key);
+      if (bankId !== undefined) { banks[key] = bankId; }
+    }
+    return {
+      'sessionId': this.sessionId, 'revision': this.revision, 'transferred': this.transferred,
+      'reciteMode': this.reciteMode, 'shuffleEnabled': this.shuffleEnabled,
+      'version': 1, 'questions': this.questions.map((q): Object => questionToJson(q)),
+      'keys': this.questionSessionKeys.slice(), 'banks': banks, 'drafts': drafts,
+      'results': studyRecordToJson(record), 'resultKeys': resultKeys,
+      'index': this.index, 'mode': this.mode, 'batchSubmitted': this.batchSubmitted,
+      'batchGroupSize': this.batchGroupSize, 'batchGroupStartIndex': this.batchGroupStartIndex,
+      'optionShuffleSeed': this.optionShuffleSeed, 'startedAt': this.startedAt ?? 0,
+      'elapsedMs': Math.max(0, this.host.now() - (this.startedAt ?? this.host.now())),
+      'sourceLabel': this.sourceLabel, 'scopeType': this.sessionScopeType ?? '',
+      'scopeName': this.sessionScopeName ?? '', 'sequentialBankId': this.sequentialBankId ?? '',
+      'sequentialStartIndex': this.sequentialStartIndex ?? -1,
+      'sequentialNextIndex': this.sequentialNextIndexAfterComplete ?? -1
+    };
+  }
+
+  restoreSnapshot(raw: Record<string, Object>): boolean {
+    // 先完整校验，再替换会话；坏存档不得覆盖当前现场。
+    try {
+      if (raw['version'] !== 1) { return false; }
+      const items = raw['questions'];
+      const keys = snapshotStrings(raw['keys']);
+      if (!Array.isArray(items) || items.length === 0 || items.length !== keys.length ||
+        new Set(keys).size !== keys.length || keys.some((key): boolean => key.length === 0)) { return false; }
+      const questions: Question[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const item = snapshotRecord(items[i] as Object);
+        if (typeof item['id'] !== 'string' || (item['id'] as string).length === 0) { return false; }
+        questions.push(parseQuestion(item));
+      }
+      const index = snapshotNumber(raw, 'index');
+      const size = snapshotNumber(raw, 'batchGroupSize');
+      const groupStart = snapshotNumber(raw, 'batchGroupStartIndex');
+      if (index < 0 || index >= keys.length || size < 1 || groupStart < 0 || groupStart >= keys.length) { return false; }
+      if (raw['mode'] !== PRACTICE_MODE_INSTANT && raw['mode'] !== PRACTICE_MODE_BATCH) { return false; }
+      if (raw['mode'] === PRACTICE_MODE_BATCH &&
+        (index < groupStart || index >= Math.min(keys.length, groupStart + size))) { return false; }
+      const banks = snapshotRecord(raw['banks']);
+      const drafts = snapshotRecord(raw['drafts']);
+      const resultKeys = snapshotStrings(raw['resultKeys']);
+      const record = parseStudyRecord(snapshotRecord(raw['results']));
+      if (record === null || record.questionResults.length !== resultKeys.length ||
+        new Set(resultKeys).size !== resultKeys.length || resultKeys.some((key): boolean => !keys.includes(key))) { return false; }
+      const bankMap = new Map<string, string>();
+      const draftMap = new Map<string, string[]>();
+      for (const key of keys) {
+        if (typeof banks[key] === 'string') {
+          if (!this.host.banks().some((bank): boolean => bank.id === banks[key])) { return false; }
+          bankMap.set(key, banks[key] as string);
+        }
+        if (drafts[key] !== undefined) { draftMap.set(key, snapshotStrings(drafts[key])); }
+      }
+      const seed = snapshotNumber(raw, 'optionShuffleSeed');
+      const started = this.host.now() - Math.max(0, snapshotNumber(raw, 'elapsedMs'));
+      const seqStart = snapshotNumber(raw, 'sequentialStartIndex');
+      const seqNext = snapshotNumber(raw, 'sequentialNextIndex');
+      this.sessionId = typeof raw['sessionId'] === 'string' ? raw['sessionId'] as string : newPracticeId();
+      this.revision = typeof raw['revision'] === 'string' ? raw['revision'] as string : newPracticeId();
+      this.transferred = raw['transferred'] === true;
+      this.reciteMode = typeof raw['reciteMode'] === 'boolean' ? raw['reciteMode'] as boolean : null;
+      this.shuffleEnabled = typeof raw['shuffleEnabled'] === 'boolean' ? raw['shuffleEnabled'] as boolean : null;
+      this.questions = questions;
+      this.questionSessionKeys = keys;
+      this.questionBankIds = bankMap;
+      this.draftAnswers = draftMap;
+      this.answerResults.clear();
+      this.sessionResults.clear();
+      for (let i = 0; i < resultKeys.length; i++) {
+        this.answerResults.set(resultKeys[i], record.questionResults[i]);
+        this.sessionResults.set(resultKeys[i], record.questionResults[i].correct);
+      }
+      this.index = index;
+      this.mode = raw['mode'] as string;
+      this.batchSubmitted = raw['batchSubmitted'] === true;
+      this.batchGroupSize = size;
+      this.batchGroupStartIndex = groupStart;
+      this.optionShuffleSeed = seed;
+      this.startedAt = started;
+      this.sourceLabel = typeof raw['sourceLabel'] === 'string' ? raw['sourceLabel'] as string : '练习';
+      this.sessionScopeType = snapshotOptionalString(raw['scopeType']);
+      this.sessionScopeName = snapshotOptionalString(raw['scopeName']);
+      this.sequentialBankId = snapshotOptionalString(raw['sequentialBankId']);
+      this.sequentialStartIndex = seqStart >= 0 ? seqStart : null;
+      this.sequentialNextIndexAfterComplete = seqNext >= 0 ? seqNext : null;
+      this.restoreSelectionForCurrent();
+      return true;
+    } catch (_err) { return false; }
   }
 
   private activeBank(): QuizBank | null {
@@ -156,6 +280,10 @@ export class PracticeSessionCore {
     }
     const count = filteredItems.length; // 调用方已按题量截断（Android 由 questionCount 参数控制）
     const selectedItems = randomize ? shuffled(filteredItems).slice(0, count) : filteredItems.slice(0, count);
+    this.sessionId = newPracticeId();
+    this.transferred = false;
+    this.reciteMode = null;
+    this.shuffleEnabled = null;
     this.questions = selectedItems.map((item): Question => item.question);
     this.questionSessionKeys = buildSessionKeys(selectedItems);
     this.index = 0;
@@ -184,6 +312,7 @@ export class PracticeSessionCore {
     this.sequentialBankId = null;
     this.sequentialStartIndex = null;
     this.sequentialNextIndexAfterComplete = null;
+    this.checkpoint();
     return true;
   }
 
@@ -223,6 +352,7 @@ export class PracticeSessionCore {
       this.sequentialStartIndex = startIndex;
       this.sequentialNextIndexAfterComplete = nextIndex >= source.length ? 0 : nextIndex;
     }
+    if (started) { this.checkpoint(); }
     return started;
   }
 
@@ -270,6 +400,7 @@ export class PracticeSessionCore {
     const maxIndex = this.mode === PRACTICE_MODE_BATCH ? this.batchEndIndex() : this.questions.length - 1;
     this.index = Math.min(this.index + 1, maxIndex);
     this.restoreSelectionForCurrent();
+    this.checkpoint();
   }
 
   previousQuestion(): void {
@@ -279,6 +410,7 @@ export class PracticeSessionCore {
     const minIndex = this.mode === PRACTICE_MODE_BATCH ? this.batchStartIndex() : 0;
     this.index = Math.max(this.index - 1, minIndex);
     this.restoreSelectionForCurrent();
+    this.checkpoint();
   }
 
   goToQuestion(index: number): void {
@@ -289,6 +421,7 @@ export class PracticeSessionCore {
     const maxIndex = this.mode === PRACTICE_MODE_BATCH ? this.batchEndIndex() : this.questions.length - 1;
     this.index = coerceIn(index, minIndex, maxIndex);
     this.restoreSelectionForCurrent();
+    this.checkpoint();
   }
 
   // ---------- 作答 ----------
@@ -337,7 +470,7 @@ export class PracticeSessionCore {
       }
     }
     this.selectedAnswer = normalizedAnswer;
-    if (this.mode === PRACTICE_MODE_BATCH && !this.batchSubmitted) {
+    if (!this.answerResults.has(this.currentSessionKey() ?? '')) {
       const sessionKey = this.currentSessionKey();
       if (question !== null && sessionKey !== null) {
         if (!normalizedAnswer.some((value): boolean => value.trim().length > 0)) {
@@ -347,6 +480,7 @@ export class PracticeSessionCore {
         }
       }
     }
+    this.checkpoint();
   }
 
   // ---------- 判题/提交 ----------
@@ -392,7 +526,7 @@ export class PracticeSessionCore {
     this.answerResults.set(sessionKey,
       resultToStudyQuestionResult(result, bank !== null ? bank.id : null, bank !== null ? bank.name : null));
     this.applyResultEffects(bank, question, result, now);
-    this.host.persist();
+    this.persist();
     return result;
   }
 
@@ -421,7 +555,8 @@ export class PracticeSessionCore {
     this.batchSubmitted = true;
     this.index = this.batchStartIndex();
     this.restoreSelectionForCurrent();
-    this.host.persist();
+    this.checkpoint();
+    this.persist();
     return true;
   }
 
@@ -509,7 +644,8 @@ export class PracticeSessionCore {
       this.applyResultEffects(bank, question, result, now);
     }
     this.restoreSelectionForCurrent();
-    this.host.persist();
+    this.checkpoint();
+    this.persist();
     return unsubmitted.length;
   }
 
@@ -568,6 +704,7 @@ export class PracticeSessionCore {
     this.lastResult = null;
     this.batchSubmitted = false;
     this.restoreSelectionForCurrent();
+    this.checkpoint();
     return true;
   }
 
@@ -639,8 +776,9 @@ export class PracticeSessionCore {
         }
       }
       this.restoreSelectionForCurrent();
+      this.checkpoint();
     }
-    this.host.persist();
+    this.persist();
     return true;
   }
 
@@ -686,7 +824,7 @@ export class PracticeSessionCore {
     } else {
       favorites.unshift(new FavoriteQuestionEntry(bank.id, bank.name, question, this.host.now()));
     }
-    this.host.persist();
+    this.persist();
     return true;
   }
 
@@ -744,7 +882,7 @@ export class PracticeSessionCore {
       this.lastResult = null;
     }
     this.selectedAnswer = [];
-    this.host.persist();
+    this.persist();
     return true;
   }
 
@@ -753,11 +891,13 @@ export class PracticeSessionCore {
   completeSession(): void {
     this.finishSessionIfNeeded(true);
     this.resetState();
+    this.persist();
   }
 
   endSession(): void {
     this.finishSessionIfNeeded(false);
     this.resetState();
+    this.persist();
   }
 
   canSaveSequentialProgressOnExit(reciteEnabled: boolean): boolean {
@@ -765,12 +905,10 @@ export class PracticeSessionCore {
   }
 
   endSessionSavingSequentialProgress(reciteEnabled: boolean): void {
-    const progressSaved = this.saveSequentialProgressForExit(reciteEnabled);
+    this.saveSequentialProgressForExit(reciteEnabled);
     this.finishSessionIfNeeded(false);
     this.resetState();
-    if (progressSaved) {
-      this.host.persist();
-    }
+    this.persist();
   }
 
   private saveSequentialProgressForExit(reciteEnabled: boolean): boolean {
@@ -844,7 +982,7 @@ export class PracticeSessionCore {
       }
     }
     const recordSource = this.currentWrongSource();
-    const record = new StudyRecord(`practice_${now}`,
+    const record = new StudyRecord(this.sessionId,
       recordBank !== null ? recordBank.name : (this.sessionScopeName !== null ? this.sessionScopeName : (this.sourceLabel.length > 0 ? this.sourceLabel : '未命名题库')),
       recordSource,
       this.sourceLabel.length > 0 ? this.sourceLabel : '练习记录',
@@ -859,7 +997,6 @@ export class PracticeSessionCore {
     if (advanceSequentialProgress) {
       this.advanceSequentialProgressAfterComplete();
     }
-    this.host.persist();
   }
 
   private advanceSequentialProgressAfterComplete(): void {
@@ -891,6 +1028,7 @@ export class PracticeSessionCore {
     this.sequentialBankId = null;
     this.sequentialStartIndex = null;
     this.sequentialNextIndexAfterComplete = null;
+    this.checkpoint();
   }
 
   private restoreSelectionForCurrent(): void {
@@ -908,8 +1046,8 @@ export class PracticeSessionCore {
       return;
     }
     const result = sessionKey !== null ? this.answerResults.get(sessionKey) : undefined;
-    this.selectedAnswer = result !== undefined ? result.userAnswer : [];
-    if (this.mode === PRACTICE_MODE_BATCH && this.batchSubmitted && result !== undefined) {
+    this.selectedAnswer = result !== undefined ? result.userAnswer : (sessionKey !== null ? this.draftAnswers.get(sessionKey) ?? [] : []);
+    if (result !== undefined) {
       this.lastResult = new QuestionCheckResult(question, result.userAnswer, result.correct, result.answerText, result.autoScored);
       this.lastResult.userBlankAnswers = result.userBlankAnswers.slice();
     } else {
@@ -954,3 +1092,30 @@ export function bankPoolSources(bank: QuizBank, isSlashed: (bankId: string, ques
 }
 
 export { DEFAULT_BANK_GROUP_NAME };
+
+function snapshotRecord(value: Object | undefined): Record<string, Object> {
+  if (value === null || value === undefined || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Invalid practice snapshot');
+  }
+  return value as Record<string, Object>;
+}
+
+function snapshotStrings(value: Object | undefined): string[] {
+  if (!Array.isArray(value)) { throw new Error('Invalid practice answers'); }
+  const result: string[] = [];
+  for (let i = 0; i < value.length; i++) {
+    if (typeof value[i] !== 'string') { throw new Error('Invalid practice answer'); }
+    result.push(value[i] as string);
+  }
+  return result;
+}
+
+function snapshotNumber(raw: Record<string, Object>, key: string): number {
+  const value = raw[key];
+  if (typeof value !== 'number' || !Number.isSafeInteger(value)) { throw new Error('Invalid practice number'); }
+  return value;
+}
+
+function snapshotOptionalString(value: Object | undefined): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}

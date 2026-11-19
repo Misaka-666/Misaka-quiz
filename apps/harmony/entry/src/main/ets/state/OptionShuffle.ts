@@ -130,33 +130,17 @@ export function practiceDisplayOptions(
   return result;
 }
 
-export function originalToDisplayKeyMap(displayOptions: PracticeDisplayOption[]): Map<string, string> {
-  const map = new Map<string, string>();
+/** 选择题答案先换成当前字母，再按显示字母排序。 */
+export function practiceAnswersForDisplay(answers: string[], displayOptions: PracticeDisplayOption[]): string[] {
+  const originalToDisplay = new Map<string, string>();
   for (const option of displayOptions) {
-    map.set(option.originalKey.trim().toUpperCase(), option.displayKey);
+    originalToDisplay.set(option.originalKey.trim().toUpperCase(), option.displayKey);
   }
-  return map;
-}
-
-/** 展示用题目：选项按打乱后顺序重排、答案映射到展示键 */
-export function questionForDisplay(question: Question, displayOptions: PracticeDisplayOption[]): Question {
-  if (question.type !== QuestionType.SINGLE && question.type !== QuestionType.MULTIPLE) {
-    return question;
-  }
-  const originalToDisplay = originalToDisplayKeyMap(displayOptions);
-  const mapped = new Question(question.id, question.type, question.question);
-  mapped.number = question.number;
-  mapped.category = question.category;
-  mapped.analysis = question.analysis;
-  mapped.images = question.images;
-  mapped.score = question.score;
-  mapped.blankAnswers = question.blankAnswers.map((blanks): string[] => blanks.slice());
-  mapped.options = displayOptions.map((option): Option => new Option(option.displayKey, option.text));
-  const answers: string[] = [];
-  for (const answer of question.answer) {
-    const normalized = answer.trim().toUpperCase();
-    answers.push(originalToDisplay.get(normalized) !== undefined ? originalToDisplay.get(normalized) as string : answer);
-  }
-  mapped.answer = answers;
-  return mapped;
+  return answers.map((answer: string): string => originalToDisplay.get(answer.trim().toUpperCase()) ?? answer)
+    .sort((left: string, right: string): number => {
+      const leftKey = left.trim().toUpperCase();
+      const rightKey = right.trim().toUpperCase();
+      // 展示键先用单字母，超过 Z 后用 27、28 等数字。
+      return leftKey.length - rightKey.length || leftKey.localeCompare(rightKey);
+    });
 }
